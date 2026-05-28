@@ -11,7 +11,7 @@ Trading gold (XAUUSD) effectively requires a combination of fundamental understa
 
 ---
 
-## 2. Institutional SMC (Smart Money Concepts) - Version 7.00
+## 2. Institutional SMC (Smart Money Concepts) - Version 8.00
 To achieve profitability, traders must move beyond basic retail patterns and focus on institutional order flow.
 
 ### Key Advanced Requirements (Ultimate Edition)
@@ -33,13 +33,14 @@ To achieve profitability, traders must move beyond basic retail patterns and foc
 
 ---
 
-## 3. Testing the Logic (MetaTrader 5 EA v7.00)
-The `XAUUSD_Institutional_EA.mq5` (v7.00) automates this ultimate institutional process.
+## 3. Testing the Logic (MetaTrader 5 EA v8.00)
+The `XAUUSD_Institutional_EA.mq5` (v8.00) automates this ultimate institutional process.
 
-### Enhancements in v7.00
+### Enhancements in v8.00
 *   **Institutional Session Filter:** Restricts trading to high-volume hours.
 *   **Institutional Value Filter (VWAP):** Ensures trades are taken at Premium/Discount levels relative to Daily VWAP.
-*   **Volume Progression Check:** Confirms increasing institutional momentum during the Market Structure Shift.
+*   **Volume Progression Check (Optional):** Confirms increasing institutional momentum during the Market Structure Shift.
+*   **Optimized Volume Thresholds:** Fine-tuned volume multipliers (1.3x) for more accurate Gold institutional detection.
 *   **Volume-Enhanced Displacement:** Requires a surge in Tick Volume (Effort) to validate price moves (Result).
 *   **Volume-Confirmed Sweeps:** Liquidity sweeps must occur on high-volume candles to filter out retail noise.
 *   **Displacement Body Filter:** Ensures move strength is valid Smart Money activity.

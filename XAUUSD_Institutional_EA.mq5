@@ -5,7 +5,7 @@
 //+------------------------------------------------------------------+
 #property copyright "Copyright 2024, Jules"
 #property link      "https://example.com"
-#property version   "7.00"
+#property version   "8.00"
 #property strict
 
 #include <Trade\Trade.mqh>
@@ -19,7 +19,8 @@ input int      InpMagicNum      = 555666;   // Magic Number
 input int      InpStartHour     = 12;       // London/NY Overlap Start
 input int      InpEndHour       = 18;       // overlap End
 input double   InpBodyMulti     = 2.0;      // Displacement Body Multiplier
-input double   InpVolumeMulti   = 1.5;      // Displacement Volume Multiplier
+input double   InpVolumeMulti   = 1.3;      // Displacement Volume Multiplier
+input bool     InpUseVolumeProg = false;    // Require Increasing Volume on MSS
 input bool     InpUseVWAP       = true;     // Use VWAP as Value Filter
 input ENUM_TIMEFRAMES InpHTF    = PERIOD_H4;// Trend Timeframe
 input ENUM_TIMEFRAMES InpLTF    = PERIOD_M15;// Execution Timeframe
@@ -115,7 +116,7 @@ void OnTick()
 
    //--- 4. Market Structure Shift (MSS) + FVG
    // Volume Progression: Displacement volume (rates[1]) must be greater than Setup volume (rates[2])
-   bool volumeProgression = rates[1].tick_volume > rates[2].tick_volume;
+   bool volumeProgression = !InpUseVolumeProg || (rates[1].tick_volume > rates[2].tick_volume);
 
    bool mssBullish = sweepBullish && (rates[1].close > rates[2].high) && isStrongDisplacement && volumeProgression;
    bool mssBearish = sweepBearish && (rates[1].close < rates[2].low) && isStrongDisplacement && volumeProgression;
