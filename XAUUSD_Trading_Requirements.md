@@ -11,7 +11,7 @@ Trading gold (XAUUSD) effectively requires a combination of fundamental understa
 
 ---
 
-## 2. Institutional SMC (Smart Money Concepts) - Version 8.00
+## 2. Institutional SMC (Smart Money Concepts) - Version 9.00
 To achieve profitability, traders must move beyond basic retail patterns and focus on institutional order flow.
 
 ### Key Advanced Requirements (Ultimate Edition)
@@ -19,10 +19,11 @@ To achieve profitability, traders must move beyond basic retail patterns and foc
 2.  **Dual-Trend Alignment:** Entries must align with both the intermediate trend (H4) and the macro trend (D1 200 EMA). Trading against the macro trend is a high-risk activity.
 3.  **Displacement Quality:** An institutional 'move' must be aggressive. Displacement candles should have a body size significantly larger (at least 2x) than recent average candles.
 4.  **Effort vs. Result (Volume):** Institutional activity always leaves a footprint in volume. Significant price moves (Displacement) and reversals (Liquidity Sweeps) must be accompanied by a surge in Tick Volume to confirm institutional participation.
-5.  **Volume Progression:** Institutional interest should increase during the Market Structure Shift. The Displacement candle must show higher volume than the Setup candle.
-6.  **Institutional Value (VWAP):** Institutions seek to buy at a "Discount" (below Daily VWAP) and sell at a "Premium" (above Daily VWAP).
-7.  **Liquidity Sweeps:** Price must "hunt" the liquidity (stop losses) sitting above/below previous swing points before the institutional reversal begins.
-8.  **Mean Threshold Entry:** Institutions often fill orders at the 50% retracement (Mean Threshold) of an impulsive move. Entering at this level provides a superior Risk-to-Reward ratio.
+5.  **Volatility Filtering (ATR):** Gold is highly volatile. Displacement moves must not only be large relative to recent bodies but must also exceed current market volatility (ATR) to ensure the move is statistically significant.
+6.  **Volume Progression:** Institutional interest should increase during the Market Structure Shift. The Displacement candle must show higher volume than the Setup candle.
+7.  **Institutional Value (VWAP):** Institutions seek to buy at a "Discount" (below Daily VWAP) and sell at a "Premium" (above Daily VWAP).
+8.  **Liquidity Sweeps & Rejection:** Price must "hunt" the liquidity sitting above/below previous swing points. A valid institutional sweep is confirmed by a strong rejection wick (at least 30% of candle size), signaling that institutional orders were triggered and price was pushed back.
+9.  **Mean Threshold Entry:** Institutions often fill orders at the 50% retracement (Mean Threshold) of an impulsive move. Entering at this level provides a superior Risk-to-Reward ratio.
 
 ### The Ultimate Execution Process
 1.  **Verify Session:** Is the current time between 12:00 and 18:00 GMT?
@@ -33,14 +34,16 @@ To achieve profitability, traders must move beyond basic retail patterns and foc
 
 ---
 
-## 3. Testing the Logic (MetaTrader 5 EA v8.00)
-The `XAUUSD_Institutional_EA.mq5` (v8.00) automates this ultimate institutional process.
+## 3. Testing the Logic (MetaTrader 5 EA v9.00)
+The `XAUUSD_Institutional_EA.mq5` (v9.00) automates this ultimate institutional process.
 
-### Enhancements in v8.00
+### Enhancements in v9.00
 *   **Institutional Session Filter:** Restricts trading to high-volume hours.
+*   **Adaptive Volatility Filter (ATR):** Dynamically adjusts displacement requirements based on current market volatility.
+*   **Rejection Wick Confirmation:** Added wick analysis to liquidity sweeps to confirm institutional order flow rejection.
 *   **Institutional Value Filter (VWAP):** Ensures trades are taken at Premium/Discount levels relative to Daily VWAP.
 *   **Volume Progression Check (Optional):** Confirms increasing institutional momentum during the Market Structure Shift.
-*   **Optimized Volume Thresholds:** Fine-tuned volume multipliers (1.3x) for more accurate Gold institutional detection.
+*   **Optimized Volume Thresholds:** Fine-tuned volume multipliers (1.1x) for better sensitivity in Gold's liquidity environment.
 *   **Volume-Enhanced Displacement:** Requires a surge in Tick Volume (Effort) to validate price moves (Result).
 *   **Volume-Confirmed Sweeps:** Liquidity sweeps must occur on high-volume candles to filter out retail noise.
 *   **Displacement Body Filter:** Ensures move strength is valid Smart Money activity.

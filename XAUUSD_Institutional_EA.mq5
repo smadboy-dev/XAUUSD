@@ -5,7 +5,7 @@
 //+------------------------------------------------------------------+
 #property copyright "Copyright 2024, Jules"
 #property link      "https://example.com"
-#property version   "8.00"
+#property version   "9.00"
 #property strict
 
 #include <Trade\Trade.mqh>
@@ -19,9 +19,11 @@ input int      InpMagicNum      = 555666;   // Magic Number
 input int      InpStartHour     = 12;       // London/NY Overlap Start
 input int      InpEndHour       = 18;       // overlap End
 input double   InpBodyMulti     = 2.0;      // Displacement Body Multiplier
-input double   InpVolumeMulti   = 1.3;      // Displacement Volume Multiplier
+input double   InpVolumeMulti   = 1.1;      // Displacement Volume Multiplier
 input bool     InpUseVolumeProg = false;    // Require Increasing Volume on MSS
 input bool     InpUseVWAP       = true;     // Use VWAP as Value Filter
+input int      InpATRPeriod     = 14;       // ATR Period for Volatility
+input double   InpATRMulti      = 1.2;      // Displacement ATR Multiplier
 input ENUM_TIMEFRAMES InpHTF    = PERIOD_H4;// Trend Timeframe
 input ENUM_TIMEFRAMES InpLTF    = PERIOD_M15;// Execution Timeframe
 
@@ -29,6 +31,7 @@ input ENUM_TIMEFRAMES InpLTF    = PERIOD_M15;// Execution Timeframe
 CTrade   trade;
 int      handleHTF_EMA;
 int      handleD1_EMA;
+int      handleATR;
 
 //+------------------------------------------------------------------+
 //| Expert initialization function                                   |
@@ -38,8 +41,9 @@ int OnInit()
    trade.SetExpertMagicNumber(InpMagicNum);
    handleHTF_EMA = iMA(_Symbol, InpHTF, 50, 0, MODE_EMA, PRICE_CLOSE);
    handleD1_EMA  = iMA(_Symbol, PERIOD_D1, 200, 0, MODE_EMA, PRICE_CLOSE);
+   handleATR     = iATR(_Symbol, InpLTF, InpATRPeriod);
 
-   if(handleHTF_EMA == INVALID_HANDLE || handleD1_EMA == INVALID_HANDLE) return(INIT_FAILED);
+   if(handleHTF_EMA == INVALID_HANDLE || handleD1_EMA == INVALID_HANDLE || handleATR == INVALID_HANDLE) return(INIT_FAILED);
 
    return(INIT_SUCCEEDED);
 }
@@ -51,6 +55,7 @@ void OnDeinit(const int reason)
 {
    IndicatorRelease(handleHTF_EMA);
    IndicatorRelease(handleD1_EMA);
+   IndicatorRelease(handleATR);
 }
 
 //+------------------------------------------------------------------+
@@ -96,7 +101,13 @@ void OnTick()
    ArraySetAsSeries(rates, true);
    if(CopyRates(_Symbol, InpLTF, 0, 10, rates) < 10) return;
 
-   // Displacement Quality Check (Body Size & Volume)
+   // Get ATR for Volatility Filtering
+   double atrBuffer[];
+   ArraySetAsSeries(atrBuffer, true);
+   if(CopyBuffer(handleATR, 0, 1, 1, atrBuffer) < 1) return;
+   double currentATR = atrBuffer[0];
+
+   // Displacement Quality Check (Body Size, Volume & Volatility)
    double avgBody = 0;
    double avgVolume = 0;
    for(int i=4; i<10; i++)
@@ -108,11 +119,23 @@ void OnTick()
    avgVolume /= 6.0;
 
    double currentBody = MathAbs(rates[1].close - rates[1].open);
-   bool isStrongDisplacement = (currentBody > (avgBody * InpBodyMulti)) && (rates[1].tick_volume > (avgVolume * InpVolumeMulti));
+   // Must exceed both average body AND current volatility (ATR)
+   bool isStrongDisplacement = (currentBody > (avgBody * InpBodyMulti)) &&
+                               (currentBody > (currentATR * InpATRMulti)) &&
+                               (rates[1].tick_volume > (avgVolume * InpVolumeMulti));
 
-   // Sweep Candle is rates[2] (Requires Volume Confirmation)
-   bool sweepBullish = (rates[2].low < swingLow) && (rates[2].close > swingLow) && (rates[2].tick_volume > avgVolume);
-   bool sweepBearish = (rates[2].high > swingHigh) && (rates[2].close < swingHigh) && (rates[2].tick_volume > avgVolume);
+   // Sweep Candle is rates[2] (Requires Volume & Rejection Wick)
+   double candleSize2 = rates[2].high - rates[2].low;
+   double lowerWick2 = (rates[2].open < rates[2].close) ? (rates[2].open - rates[2].low) : (rates[2].close - rates[2].low);
+   double upperWick2 = (rates[2].open > rates[2].close) ? (rates[2].high - rates[2].open) : (rates[2].high - rates[2].close);
+
+   bool hasLowerRejection = (candleSize2 > 0) && (lowerWick2 / candleSize2 > 0.3);
+   bool hasUpperRejection = (candleSize2 > 0) && (upperWick2 / candleSize2 > 0.3);
+
+   bool sweepBullish = (rates[2].low < swingLow) && (rates[2].close > swingLow) &&
+                       (rates[2].tick_volume > avgVolume) && hasLowerRejection;
+   bool sweepBearish = (rates[2].high > swingHigh) && (rates[2].close < swingHigh) &&
+                       (rates[2].tick_volume > avgVolume) && hasUpperRejection;
 
    //--- 4. Market Structure Shift (MSS) + FVG
    // Volume Progression: Displacement volume (rates[1]) must be greater than Setup volume (rates[2])
