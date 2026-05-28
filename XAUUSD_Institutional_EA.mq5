@@ -5,7 +5,7 @@
 //+------------------------------------------------------------------+
 #property copyright "Copyright 2024, Jules"
 #property link      "https://example.com"
-#property version   "3.00"
+#property version   "3.01"
 #property strict
 
 #include <Trade\Trade.mqh>
@@ -84,10 +84,12 @@ void OnTick()
    //--- 3. Identify Displacement and FVG
    // FVG logic: check imbalance between candle 1 and candle 3
    bool isBullishFVG = (rates[1].low > rates[3].high) && (rates[1].low - rates[3].high > InpFVGMinSize * _Point);
-   bool isBearishFVG = (rates[1].high < rates[3].low) && (rates[3].low - rates[1].high > InpFVGMinSize * _Point);
+   bool isBearishFVG = (rates[1].high < rates[3].low) && (rates[2].low - rates[0].high > InpFVGMinSize * _Point);
+   // Wait, fixed a typo in BearishFVG above: rates[2].low -> rates[3].low and rates[0].high -> rates[1].high
+   isBearishFVG = (rates[1].high < rates[3].low) && (rates[3].low - rates[1].high > InpFVGMinSize * _Point);
 
    //--- 4. Market Structure Shift (MSS)
-   // MSS: Displacement candle (bar 1) breaks the high/low of the candle before the sweep (bar 3 or 4)
+   // MSS: Displacement candle (bar 1) breaks the high/low of the candle before the sweep (bar 2)
    bool mssBullish = sweepBullish && (rates[1].close > rates[2].high);
    bool mssBearish = sweepBearish && (rates[1].close < rates[2].low);
 
@@ -101,7 +103,8 @@ void OnTick()
       double sl = entryPrice - InpStopLoss * _Point;
       double tp = entryPrice + InpTakeProfit * _Point;
 
-      if(trade.BuyLimit(InpLotSize, entryPrice, _Symbol, NormalizeDouble(sl, _Digits), NormalizeDouble(tp, _Digits), "SMC Bullish Entry"))
+      // Fix BuyLimit parameters
+      if(trade.BuyLimit(InpLotSize, entryPrice, _Symbol, NormalizeDouble(sl, _Digits), NormalizeDouble(tp, _Digits), ORDER_TIME_GTC, 0, "SMC Bullish Entry"))
          Print("HTF Bullish Bias: SMC Entry placed at ", entryPrice);
    }
    else if(isBearishBias && mssBearish && isBearishFVG)
@@ -110,7 +113,8 @@ void OnTick()
       double sl = entryPrice + InpStopLoss * _Point;
       double tp = entryPrice - InpTakeProfit * _Point;
 
-      if(trade.SellLimit(InpLotSize, entryPrice, _Symbol, NormalizeDouble(sl, _Digits), NormalizeDouble(tp, _Digits), "SMC Bearish Entry"))
+      // Fix SellLimit parameters
+      if(trade.SellLimit(InpLotSize, entryPrice, _Symbol, NormalizeDouble(sl, _Digits), NormalizeDouble(tp, _Digits), ORDER_TIME_GTC, 0, "SMC Bearish Entry"))
          Print("HTF Bearish Bias: SMC Entry placed at ", entryPrice);
    }
 }
