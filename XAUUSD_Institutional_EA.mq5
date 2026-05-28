@@ -5,7 +5,7 @@
 //+------------------------------------------------------------------+
 #property copyright "Copyright 2024, Jules"
 #property link      "https://example.com"
-#property version   "6.00"
+#property version   "7.00"
 #property strict
 
 #include <Trade\Trade.mqh>
@@ -20,6 +20,7 @@ input int      InpStartHour     = 12;       // London/NY Overlap Start
 input int      InpEndHour       = 18;       // overlap End
 input double   InpBodyMulti     = 2.0;      // Displacement Body Multiplier
 input double   InpVolumeMulti   = 1.5;      // Displacement Volume Multiplier
+input bool     InpUseVWAP       = true;     // Use VWAP as Value Filter
 input ENUM_TIMEFRAMES InpHTF    = PERIOD_H4;// Trend Timeframe
 input ENUM_TIMEFRAMES InpLTF    = PERIOD_M15;// Execution Timeframe
 
@@ -96,14 +97,14 @@ void OnTick()
 
    // Displacement Quality Check (Body Size & Volume)
    double avgBody = 0;
-   long   avgVolume = 0;
+   double avgVolume = 0;
    for(int i=4; i<10; i++)
    {
       avgBody += MathAbs(rates[i].close - rates[i].open);
-      avgVolume += rates[i].tick_volume;
+      avgVolume += (double)rates[i].tick_volume;
    }
-   avgBody /= 6;
-   avgVolume /= 6;
+   avgBody /= 6.0;
+   avgVolume /= 6.0;
 
    double currentBody = MathAbs(rates[1].close - rates[1].open);
    bool isStrongDisplacement = (currentBody > (avgBody * InpBodyMulti)) && (rates[1].tick_volume > (avgVolume * InpVolumeMulti));
@@ -113,8 +114,11 @@ void OnTick()
    bool sweepBearish = (rates[2].high > swingHigh) && (rates[2].close < swingHigh) && (rates[2].tick_volume > avgVolume);
 
    //--- 4. Market Structure Shift (MSS) + FVG
-   bool mssBullish = sweepBullish && (rates[1].close > rates[2].high) && isStrongDisplacement;
-   bool mssBearish = sweepBearish && (rates[1].close < rates[2].low) && isStrongDisplacement;
+   // Volume Progression: Displacement volume (rates[1]) must be greater than Setup volume (rates[2])
+   bool volumeProgression = rates[1].tick_volume > rates[2].tick_volume;
+
+   bool mssBullish = sweepBullish && (rates[1].close > rates[2].high) && isStrongDisplacement && volumeProgression;
+   bool mssBearish = sweepBearish && (rates[1].close < rates[2].low) && isStrongDisplacement && volumeProgression;
 
    bool isBullishFVG = (rates[1].low > rates[3].high) && (rates[1].low - rates[3].high > InpFVGMinSize * _Point);
    bool isBearishFVG = (rates[1].high < rates[3].low) && (rates[3].low - rates[1].high > InpFVGMinSize * _Point);
@@ -123,7 +127,11 @@ void OnTick()
    if(AlreadyInTrade()) return;
 
    //--- 5. Entry Execution (50% retracement of the Displacement move)
-   if(isBullishBias && mssBullish && isBullishFVG)
+   double vwap = InpUseVWAP ? GetDailyVWAP() : 0;
+   bool bullishValue = !InpUseVWAP || (rates[1].close < vwap);
+   bool bearishValue = !InpUseVWAP || (rates[1].close > vwap);
+
+   if(isBullishBias && mssBullish && isBullishFVG && bullishValue)
    {
       double entryPrice = (rates[1].high + rates[1].low) / 2.0; // Mean threshold of displacement
       double sl = rates[2].low - 100 * _Point;
@@ -132,7 +140,7 @@ void OnTick()
       if(trade.BuyLimit(InpLotSize, entryPrice, _Symbol, NormalizeDouble(sl, _Digits), NormalizeDouble(tp, _Digits), ORDER_TIME_GTC, 0, "SMC Ultimate Buy"))
          Print("Session Start: Institutional Buy Limit at ", entryPrice);
    }
-   else if(isBearishBias && mssBearish && isBearishFVG)
+   else if(isBearishBias && mssBearish && isBearishFVG && bearishValue)
    {
       double entryPrice = (rates[1].high + rates[1].low) / 2.0;
       double sl = rates[2].high + 100 * _Point;
@@ -192,5 +200,32 @@ bool AlreadyInTrade()
          if(OrderGetInteger(ORDER_MAGIC) == InpMagicNum) return true;
    }
    return false;
+}
+
+//+------------------------------------------------------------------+
+//| Get Daily VWAP                                                   |
+//+------------------------------------------------------------------+
+double GetDailyVWAP()
+{
+   MqlRates daily_rates[];
+   ArraySetAsSeries(daily_rates, true);
+
+   // Copy rates from the start of the day
+   datetime startOfDay = iTime(_Symbol, PERIOD_D1, 0);
+   int count = CopyRates(_Symbol, InpLTF, startOfDay, TimeCurrent(), daily_rates);
+
+   if(count <= 0) return 0;
+
+   double sumPV = 0;
+   long sumV = 0;
+
+   for(int i=0; i<count; i++)
+   {
+      double typicalPrice = (daily_rates[i].high + daily_rates[i].low + daily_rates[i].close) / 3.0;
+      sumPV += typicalPrice * (double)daily_rates[i].tick_volume;
+      sumV += daily_rates[i].tick_volume;
+   }
+
+   return (sumV > 0) ? (sumPV / (double)sumV) : 0;
 }
 //+------------------------------------------------------------------+
