@@ -5,7 +5,7 @@
 //+------------------------------------------------------------------+
 #property copyright "Copyright 2024, Jules"
 #property link      "https://example.com"
-#property version   "16.00"
+#property version   "17.00"
 #property strict
 
 #include <Trade\Trade.mqh>
@@ -21,13 +21,14 @@ input int      InpEndHour       = 21;       // NY End Hour (MSK)
 input int      InpFridayCloseHour = 22;     // Friday Session Close Hour (MSK)
 input int      InpAsianStart    = 1;        // Asian Session Start (MSK)
 input int      InpAsianEnd      = 10;       // Asian Session End (MSK)
-input double   InpBodyMulti     = 1.2;      // Displacement Body Multiplier
-input double   InpVolumeMulti   = 1.2;      // Displacement Volume Multiplier
+input double   InpBodyMulti     = 1.5;      // Displacement Body Multiplier
+input double   InpVolumeMulti   = 1.5;      // Displacement Volume Multiplier
 input bool     InpUseVolumeProg = false;    // Require Increasing Volume on MSS
 input bool     InpUseVWAP       = true;     // Use VWAP as Value Filter
 input bool     InpUseFVG        = false;    // Require FVG for Entry
 input bool     InpUseBias       = false;    // Require H4 Trend Bias
 input bool     InpUseMeanThreshold = true;  // Entry at 50% of Sweep Candle
+input int      InpMaxSpread     = 50;       // Max Spread in Points ($0.50)
 input int      InpATRPeriod     = 14;       // ATR Period for Volatility
 input double   InpATRMulti      = 1.0;      // Displacement ATR Multiplier
 input double   InpSLATRMulti    = 2.0;      // ATR Multiplier for Stop Loss
@@ -76,7 +77,10 @@ void OnTick()
       return;
    }
 
-   // 2. Session Filter
+   // 2. Spread Filter
+   if(SymbolInfoInteger(_Symbol, SYMBOL_SPREAD) > InpMaxSpread) return;
+
+   // 3. Session Filter
    if(dt.hour < InpStartHour || dt.hour >= InpEndHour) return;
 
    // Manage existing positions
@@ -141,11 +145,21 @@ void OnTick()
    if(pdl > 0 && rates[2].low < pdl) { lowerLiquidity = pdl; lowerLevelName = "PDL"; }
    else if(asianLow > 0 && rates[2].low < asianLow) { lowerLiquidity = asianLow; lowerLevelName = "Asian Low"; }
 
-   // Get ATR for Volatility Filtering
+   // Get ATR for Volatility Filtering & Spike Detection
    double atrBuffer[];
    ArraySetAsSeries(atrBuffer, true);
-   if(CopyBuffer(handleATR, 0, 1, 1, atrBuffer) < 1) return;
+   if(CopyBuffer(handleATR, 0, 1, 100, atrBuffer) < 100) return;
    double currentATR = atrBuffer[0];
+   double sumATR = 0;
+   for(int i=0; i<100; i++) sumATR += atrBuffer[i];
+   double avgATR = sumATR / 100.0;
+
+   // ATR Spike Filter: Avoid trading during news-driven extreme volatility
+   if(currentATR > 2.5 * avgATR)
+   {
+      Print("Diag: ATR Spike detected (", currentATR, " > 2.5x ", avgATR, "). Skipping setup.");
+      return;
+   }
 
    // Displacement Quality Check (Body Size, Volume & Volatility)
    double avgBody = 0;
@@ -159,10 +173,14 @@ void OnTick()
    avgVolume /= 6.0;
 
    double currentBody = MathAbs(rates[1].close - rates[1].open);
-   // Must exceed both average body AND current volatility (ATR)
+   double currentSize = rates[1].high - rates[1].low;
+   bool hasLowWickRatio = (currentSize > 0) && (currentBody / currentSize > 0.6); // 60% Body required
+
+   // Must exceed average body, current volatility (ATR), volume, and have high conviction body
    bool isStrongDisplacement = (currentBody > (avgBody * InpBodyMulti)) &&
                                (currentBody > (currentATR * InpATRMulti)) &&
-                               (rates[1].tick_volume > (avgVolume * InpVolumeMulti));
+                               (rates[1].tick_volume > (avgVolume * InpVolumeMulti)) &&
+                               hasLowWickRatio;
 
    // Sweep Candle is rates[2] (Requires Volume & Rejection Wick)
    double candleSize2 = rates[2].high - rates[2].low;
@@ -278,17 +296,29 @@ void ManagePositions()
             double currentSL = PositionGetDouble(POSITION_SL);
             double currentPrice = (PositionGetInteger(POSITION_TYPE) == POSITION_TYPE_BUY) ? SymbolInfoDouble(_Symbol, SYMBOL_BID) : SymbolInfoDouble(_Symbol, SYMBOL_ASK);
 
+            double stopLoss = PositionGetDouble(POSITION_SL);
+            double takeProfit = PositionGetDouble(POSITION_TP);
+            double riskPts = MathAbs(openPrice - stopLoss);
+
             if(PositionGetInteger(POSITION_TYPE) == POSITION_TYPE_BUY)
             {
                double dist = currentPrice - openPrice;
-               if(dist > 1000 * _Point && currentSL < openPrice)
-                  trade.PositionModify(ticket, openPrice + 10 * _Point, PositionGetDouble(POSITION_TP));
+               // Move to Breakeven at 1.5R profit
+               if(riskPts > 0 && dist > riskPts * 1.5 && currentSL < openPrice)
+                  trade.PositionModify(ticket, openPrice + 50 * _Point, takeProfit);
+               // Aggressive BE at 1000 points (fixed)
+               else if(dist > 1000 * _Point && currentSL < openPrice)
+                  trade.PositionModify(ticket, openPrice + 10 * _Point, takeProfit);
             }
             else
             {
                double dist = openPrice - currentPrice;
-               if(dist > 1000 * _Point && (currentSL > openPrice || currentSL == 0))
-                  trade.PositionModify(ticket, openPrice - 10 * _Point, PositionGetDouble(POSITION_TP));
+               // Move to Breakeven at 1.5R profit
+               if(riskPts > 0 && dist > riskPts * 1.5 && (currentSL > openPrice || currentSL == 0))
+                  trade.PositionModify(ticket, openPrice - 50 * _Point, takeProfit);
+               // Aggressive BE at 1000 points (fixed)
+               else if(dist > 1000 * _Point && (currentSL > openPrice || currentSL == 0))
+                  trade.PositionModify(ticket, openPrice - 10 * _Point, takeProfit);
             }
          }
       }
