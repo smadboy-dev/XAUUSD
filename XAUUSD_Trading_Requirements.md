@@ -11,10 +11,10 @@ Trading gold (XAUUSD) effectively requires a combination of fundamental understa
 
 ---
 
-## 2. Institutional SMC (Smart Money Concepts) - Version 15.00
+## 2. Institutional SMC (Smart Money Concepts) - Version 16.00
 To achieve profitability, traders must move beyond basic retail patterns and focus on institutional order flow.
 
-### Key Advanced Requirements (Ultimate Edition)
+### Key Advanced Requirements (Institutional Pro)
 1.  **Session Liquidity & The London Move:** The most profitable moves in XAUUSD often occur at the London open (08:00 GMT). Price frequently sweeps the High or Low of the preceding Asian Session (00:00 - 07:00 GMT) to hunt liquidity before reversing into the main daily trend.
 2.  **Trend Alignment:** Entries must align with the intermediate trend (H4 50 EMA).
 3.  **Displacement Quality:** An institutional 'move' must be aggressive. Displacement candles should have a body size significantly larger (at least 2x) than recent average candles.
@@ -39,32 +39,23 @@ To achieve profitability, traders must move beyond basic retail patterns and foc
 
 ---
 
-## 3. Testing the Logic (MetaTrader 5 EA v15.00)
-The `XAUUSD_Institutional_EA.mq5` (v15.00) automates this ultimate institutional process.
+## 3. Testing the Logic (MetaTrader 5 EA v16.00)
+The `XAUUSD_Institutional_EA.mq5` (v16.00) automates this ultimate institutional process.
 
-### Enhancements in 15.00
-*   **Institutional Exhaustion Detection:** New logic to identify market turning points when retail momentum dies out, confirmed by volume and wick rejection.
-*   **Aggressive Capital Protection:** Faster breakeven trigger (1000 points) and optional Trend/FVG filters to prioritize capital safety.
-*   **Previous Day Liquidity (PDH/PDL):** Integrated daily high/low tracking to capture macro-liquidity reversals.
+### Enhancements in 16.00 (Institutional Pro)
+*   **Dynamic Take Profit (RR 1:3):** Replaced fixed points with an adaptive RR-based exit to better capture Gold's volatile extensions.
+*   **Mean Threshold Entry:** Added the ability to enter at the 50% level of the sweep candle, significantly improving Risk/Reward on aggressive reversals.
+*   **Friday Market Exit:** Automated closing of all positions at 22:00 MSK on Fridays to eliminate weekend gap risk.
+*   **Tiered Liquidity Priority:** Refined detection to prioritize Previous Day High/Low (PDH/PDL) and Asian Range levels over local swings.
+*   **Stricter Displacement Filtering:** Increased body and volume multipliers (1.2x) to filter out low-conviction market shifts.
+*   **Institutional Exhaustion Detection:** Logic to identify market turning points when retail momentum dies out, confirmed by volume and wick rejection.
+*   **Aggressive Capital Protection:** Faster breakeven trigger (1000 points).
 *   **Order Block Execution:** Shifts entry logic to institutional order blocks (Sweep Candle Open) for precise execution.
 *   **Dynamic ATR Stop Loss:** Automatically scales stop loss distance based on current market volatility (default 2.0x ATR).
-*   **Multi-Bar FVG Search:** Broader search for Fair Value Gaps across the Market Structure Shift to ensure no institutional footprints are missed.
-*   **Optimized Fill Logic:** Prioritizes FVG boundaries for limit orders to improve the probability of trade execution.
-*   **High Sensitivity Signal Logic:** Relaxed volume, body, and volatility multipliers to increase trade frequency in the Gold market.
-*   **Filter Diagnostics:** Integrated real-time 'Diag' logging in the MT5 Experts tab to track setup filtering and identify why potential trades are being skipped.
-*   **Asian Range Liquidity Sweep:** Explicitly targets the Highs and Lows of the Asian session as primary liquidity zones.
+*   **Multi-Bar FVG Search:** Broader search for Fair Value Gaps across the Market Structure Shift.
+*   **Filter Diagnostics:** Integrated real-time 'Diag' logging in the MT5 Experts tab to track setup filtering.
 *   **London Session Optimization (MSK Alignment):** Shifted default start time to 11:00 MSK (GMT+3) to capture the London Move.
-*   **Institutional Session Filter:** Restricts trading to high-volume hours.
-*   **Adaptive Volatility Filter (ATR):** Dynamically adjusts displacement requirements based on current market volatility.
-*   **Rejection Wick Confirmation:** Added wick analysis to liquidity sweeps to confirm institutional order flow rejection.
 *   **Institutional Value Filter (VWAP):** Ensures trades are taken at Premium/Discount levels relative to Daily VWAP.
-*   **Volume Progression Check (Optional):** Confirms increasing institutional momentum during the Market Structure Shift.
-*   **Optimized Volume Thresholds:** Fine-tuned volume multipliers (1.1x) for better sensitivity in Gold's liquidity environment.
-*   **Volume-Enhanced Displacement:** Requires a surge in Tick Volume (Effort) to validate price moves (Result).
-*   **Volume-Confirmed Sweeps:** Liquidity sweeps must occur on high-volume candles to filter out retail noise.
-*   **Displacement Body Filter:** Ensures move strength is valid Smart Money activity.
-*   **Macro Trend Filter:** Integrates Daily 200 EMA for ultimate bias confirmation.
-*   **Mean Threshold Entry:** Optimized limit order placement for maximum RR.
 
 ### Important: Session Time Alignment (Moscow Time MSK)
 The EA is pre-configured for a **Moscow Time (GMT+3)** market watch. If your broker uses a different server time (e.g., GMT+2/EET), you must adjust the session inputs accordingly:

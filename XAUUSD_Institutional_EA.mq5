@@ -5,7 +5,7 @@
 //+------------------------------------------------------------------+
 #property copyright "Copyright 2024, Jules"
 #property link      "https://example.com"
-#property version   "15.00"
+#property version   "16.00"
 #property strict
 
 #include <Trade\Trade.mqh>
@@ -14,18 +14,20 @@
 input double   InpLotSize       = 0.01;     // Trade Lot Size
 input int      InpSwingLookback = 50;       // Bars to find Swing High/Low
 input int      InpFVGMinSize    = 10;       // Minimum FVG size in Points ($0.10)
-input int      InpTakeProfitPts = 2500;     // Target Profit in Points ($25.00)
+input double   InpTargetRR      = 3.0;      // Target Risk:Reward Ratio
 input int      InpMagicNum      = 555666;   // Magic Number
 input int      InpStartHour     = 11;       // London Start Hour (MSK)
 input int      InpEndHour       = 21;       // NY End Hour (MSK)
+input int      InpFridayCloseHour = 22;     // Friday Session Close Hour (MSK)
 input int      InpAsianStart    = 1;        // Asian Session Start (MSK)
 input int      InpAsianEnd      = 10;       // Asian Session End (MSK)
-input double   InpBodyMulti     = 1.1;      // Displacement Body Multiplier
-input double   InpVolumeMulti   = 1.0;      // Displacement Volume Multiplier
+input double   InpBodyMulti     = 1.2;      // Displacement Body Multiplier
+input double   InpVolumeMulti   = 1.2;      // Displacement Volume Multiplier
 input bool     InpUseVolumeProg = false;    // Require Increasing Volume on MSS
 input bool     InpUseVWAP       = true;     // Use VWAP as Value Filter
 input bool     InpUseFVG        = false;    // Require FVG for Entry
 input bool     InpUseBias       = false;    // Require H4 Trend Bias
+input bool     InpUseMeanThreshold = true;  // Entry at 50% of Sweep Candle
 input int      InpATRPeriod     = 14;       // ATR Period for Volatility
 input double   InpATRMulti      = 1.0;      // Displacement ATR Multiplier
 input double   InpSLATRMulti    = 2.0;      // ATR Multiplier for Stop Loss
@@ -35,7 +37,6 @@ input ENUM_TIMEFRAMES InpLTF    = PERIOD_M15;// Execution Timeframe
 //--- Global variables
 CTrade   trade;
 int      handleHTF_EMA;
-int      handleD1_EMA;
 int      handleATR;
 
 //+------------------------------------------------------------------+
@@ -45,10 +46,9 @@ int OnInit()
 {
    trade.SetExpertMagicNumber(InpMagicNum);
    handleHTF_EMA = iMA(_Symbol, InpHTF, 50, 0, MODE_EMA, PRICE_CLOSE);
-   handleD1_EMA  = iMA(_Symbol, PERIOD_D1, 200, 0, MODE_EMA, PRICE_CLOSE);
    handleATR     = iATR(_Symbol, InpLTF, InpATRPeriod);
 
-   if(handleHTF_EMA == INVALID_HANDLE || handleD1_EMA == INVALID_HANDLE || handleATR == INVALID_HANDLE) return(INIT_FAILED);
+   if(handleHTF_EMA == INVALID_HANDLE || handleATR == INVALID_HANDLE) return(INIT_FAILED);
 
    return(INIT_SUCCEEDED);
 }
@@ -59,7 +59,6 @@ int OnInit()
 void OnDeinit(const int reason)
 {
    IndicatorRelease(handleHTF_EMA);
-   IndicatorRelease(handleD1_EMA);
    IndicatorRelease(handleATR);
 }
 
@@ -68,9 +67,16 @@ void OnDeinit(const int reason)
 //+------------------------------------------------------------------+
 void OnTick()
 {
-   // 1. Session Filter
+   // 1. Friday Exit Logic (Avoid weekend gaps)
    MqlDateTime dt;
    TimeCurrent(dt);
+   if(dt.day_of_week == 5 && dt.hour >= InpFridayCloseHour)
+   {
+      CloseAllTrades();
+      return;
+   }
+
+   // 2. Session Filter
    if(dt.hour < InpStartHour || dt.hour >= InpEndHour) return;
 
    // Manage existing positions
@@ -124,14 +130,16 @@ void OnTick()
    ArraySetAsSeries(rates, true);
    if(CopyRates(_Symbol, InpLTF, 0, 10, rates) < 10) return;
 
-   // Target Liquidity: Find the nearest major level
+   // Institutional Liquidity Tiering: Identify which major level is being swept
    double upperLiquidity = swingHigh;
-   if(asianHigh > 0 && MathAbs(rates[0].close - asianHigh) < MathAbs(rates[0].close - upperLiquidity)) upperLiquidity = asianHigh;
-   if(pdh > 0 && MathAbs(rates[0].close - pdh) < MathAbs(rates[0].close - upperLiquidity)) upperLiquidity = pdh;
+   string upperLevelName = "Swing High";
+   if(pdh > 0 && rates[2].high > pdh) { upperLiquidity = pdh; upperLevelName = "PDH"; }
+   else if(asianHigh > 0 && rates[2].high > asianHigh) { upperLiquidity = asianHigh; upperLevelName = "Asian High"; }
 
    double lowerLiquidity = swingLow;
-   if(asianLow > 0 && MathAbs(rates[0].close - asianLow) < MathAbs(rates[0].close - lowerLiquidity)) lowerLiquidity = asianLow;
-   if(pdl > 0 && MathAbs(rates[0].close - pdl) < MathAbs(rates[0].close - lowerLiquidity)) lowerLiquidity = pdl;
+   string lowerLevelName = "Swing Low";
+   if(pdl > 0 && rates[2].low < pdl) { lowerLiquidity = pdl; lowerLevelName = "PDL"; }
+   else if(asianLow > 0 && rates[2].low < asianLow) { lowerLiquidity = asianLow; lowerLevelName = "Asian Low"; }
 
    // Get ATR for Volatility Filtering
    double atrBuffer[];
@@ -169,8 +177,8 @@ void OnTick()
    bool sweepBearish = (rates[2].high > upperLiquidity) && (rates[2].close < upperLiquidity) &&
                        (rates[2].tick_volume > avgVolume) && hasUpperRejection;
 
-   if(sweepBullish) Print("Diag: Bullish Sweep Detected at ", lowerLiquidity);
-   if(sweepBearish) Print("Diag: Bearish Sweep Detected at ", upperLiquidity);
+   if(sweepBullish) Print("Diag: Bullish Sweep Detected at ", lowerLevelName, " (", lowerLiquidity, ")");
+   if(sweepBearish) Print("Diag: Bearish Sweep Detected at ", upperLevelName, " (", upperLiquidity, ")");
 
    //--- 4. Market Structure Shift (MSS) + FVG
    // Volume Progression: Displacement volume (rates[1]) must be greater than Setup volume (rates[2])
@@ -226,22 +234,31 @@ void OnTick()
 
    if(bullishEntry)
    {
-      // Entry at Order Block (Open of the sweep candle) or FVG level
-      double entryPrice = (bullishFVGLevel > 0) ? bullishFVGLevel : rates[2].open;
-      double sl = rates[2].low - (currentATR * InpSLATRMulti);
-      double tp = entryPrice + InpTakeProfitPts * _Point;
+      // Entry Priority: FVG > Mean Threshold > Order Block (Open)
+      double entryPrice = rates[2].open;
+      if(isBullishFVG) entryPrice = bullishFVGLevel;
+      else if(InpUseMeanThreshold) entryPrice = (rates[2].high + rates[2].low) / 2.0;
 
-      if(trade.BuyLimit(InpLotSize, entryPrice, _Symbol, NormalizeDouble(sl, _Digits), NormalizeDouble(tp, _Digits), ORDER_TIME_GTC, 0, "SMC Ultimate Buy"))
-         Print("Session Start: Institutional Buy Limit at ", entryPrice);
+      double sl = rates[2].low - (currentATR * InpSLATRMulti);
+      double risk = MathAbs(entryPrice - sl);
+      double tp = entryPrice + (risk * InpTargetRR);
+
+      if(trade.BuyLimit(InpLotSize, entryPrice, _Symbol, NormalizeDouble(sl, _Digits), NormalizeDouble(tp, _Digits), ORDER_TIME_GTC, 0, "SMC Pro Buy"))
+         Print("Session Start: Institutional Buy Limit at ", entryPrice, " TP: ", tp);
    }
    else if(bearishEntry)
    {
-      double entryPrice = (bearishFVGLevel > 0) ? bearishFVGLevel : rates[2].open;
-      double sl = rates[2].high + (currentATR * InpSLATRMulti);
-      double tp = entryPrice - InpTakeProfitPts * _Point;
+      // Entry Priority: FVG > Mean Threshold > Order Block (Open)
+      double entryPrice = rates[2].open;
+      if(isBearishFVG) entryPrice = bearishFVGLevel;
+      else if(InpUseMeanThreshold) entryPrice = (rates[2].high + rates[2].low) / 2.0;
 
-      if(trade.SellLimit(InpLotSize, entryPrice, _Symbol, NormalizeDouble(sl, _Digits), NormalizeDouble(tp, _Digits), ORDER_TIME_GTC, 0, "SMC Ultimate Sell"))
-         Print("Session Start: Institutional Sell Limit at ", entryPrice);
+      double sl = rates[2].high + (currentATR * InpSLATRMulti);
+      double risk = MathAbs(entryPrice - sl);
+      double tp = entryPrice - (risk * InpTargetRR);
+
+      if(trade.SellLimit(InpLotSize, entryPrice, _Symbol, NormalizeDouble(sl, _Digits), NormalizeDouble(tp, _Digits), ORDER_TIME_GTC, 0, "SMC Pro Sell"))
+         Print("Session Start: Institutional Sell Limit at ", entryPrice, " TP: ", tp);
    }
 }
 
@@ -275,6 +292,27 @@ void ManagePositions()
             }
          }
       }
+   }
+}
+
+//+------------------------------------------------------------------+
+//| Close all open trades and delete pending orders                  |
+//+------------------------------------------------------------------+
+void CloseAllTrades()
+{
+   for(int i=PositionsTotal()-1; i>=0; i--)
+   {
+      ulong ticket = PositionGetTicket(i);
+      if(PositionSelectByTicket(ticket))
+         if(PositionGetInteger(POSITION_MAGIC) == InpMagicNum)
+            trade.PositionClose(ticket);
+   }
+   for(int i=OrdersTotal()-1; i>=0; i--)
+   {
+      ulong ticket = OrderGetTicket(i);
+      if(OrderSelect(ticket))
+         if(OrderGetInteger(ORDER_MAGIC) == InpMagicNum)
+            trade.OrderDelete(ticket);
    }
 }
 
