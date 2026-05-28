@@ -11,7 +11,7 @@ Trading gold (XAUUSD) effectively requires a combination of fundamental understa
 
 ---
 
-## 2. Institutional SMC (Smart Money Concepts) - Version 12.00
+## 2. Institutional SMC (Smart Money Concepts) - Version 13.00
 To achieve profitability, traders must move beyond basic retail patterns and focus on institutional order flow.
 
 ### Key Advanced Requirements (Ultimate Edition)
@@ -22,8 +22,10 @@ To achieve profitability, traders must move beyond basic retail patterns and foc
 5.  **Volatility Filtering (ATR):** Gold is highly volatile. Displacement moves must not only be large relative to recent bodies but must also exceed current market volatility (ATR) to ensure the move is statistically significant.
 6.  **Volume Progression:** Institutional interest should increase during the Market Structure Shift. The Displacement candle must show higher volume than the Setup candle.
 7.  **Institutional Value (VWAP):** Institutions seek to buy at a "Discount" (below Daily VWAP) and sell at a "Premium" (above Daily VWAP).
-8.  **Liquidity Sweeps & Rejection:** Price must "hunt" the liquidity sitting above/below previous swing points. A valid institutional sweep is confirmed by a strong rejection wick (at least 30% of candle size), signaling that institutional orders were triggered and price was pushed back.
-9.  **Mean Threshold Entry:** Institutions often fill orders at the 50% retracement (Mean Threshold) of an impulsive move. Entering at this level provides a superior Risk-to-Reward ratio.
+8.  **Liquidity Sweeps & Rejection:** Price must "hunt" the liquidity sitting above/below previous swing points. A valid institutional sweep is confirmed by a strong rejection wick (at least 20% of candle size), signaling that institutional orders were triggered and price was pushed back.
+9.  **Fair Value Gap (FVG) Optimization:** Institutions leave gaps in liquidity during aggressive moves. The EA searches for these gaps across multiple recent bars to identify high-probability entry zones.
+10. **Institutional Entry (FVG/Mean):** If a Fair Value Gap exists, orders are placed at the gap boundary for a higher fill rate. Otherwise, the Mean Threshold (50%) is used.
+11. **Volatility-Adjusted Risk (ATR SL):** Stop losses must scale with market volatility. Using a fixed point buffer is dangerous in Gold; instead, the EA uses a multiplier of the current ATR to ensure safe breathing room for institutional fluctuations.
 
 ### The Ultimate Execution Process
 1.  **Verify Session:** Is the current time between 12:00 and 18:00 GMT?
@@ -34,10 +36,13 @@ To achieve profitability, traders must move beyond basic retail patterns and foc
 
 ---
 
-## 3. Testing the Logic (MetaTrader 5 EA v12.00)
-The `XAUUSD_Institutional_EA.mq5` (v12.00) automates this ultimate institutional process.
+## 3. Testing the Logic (MetaTrader 5 EA v13.00)
+The `XAUUSD_Institutional_EA.mq5` (v13.00) automates this ultimate institutional process.
 
-### Enhancements in 12.00
+### Enhancements in 13.00
+*   **Dynamic ATR Stop Loss:** Automatically scales stop loss distance based on current market volatility (default 2.0x ATR).
+*   **Multi-Bar FVG Search:** Broader search for Fair Value Gaps across the Market Structure Shift to ensure no institutional footprints are missed.
+*   **Optimized Fill Logic:** Prioritizes FVG boundaries for limit orders to improve the probability of trade execution.
 *   **High Sensitivity Signal Logic:** Relaxed volume, body, and volatility multipliers to increase trade frequency in the Gold market.
 *   **Filter Diagnostics:** Integrated real-time 'Diag' logging in the MT5 Experts tab to track setup filtering and identify why potential trades are being skipped.
 *   **Asian Range Liquidity Sweep:** Explicitly targets the Highs and Lows of the Asian session as primary liquidity zones.

@@ -5,7 +5,7 @@
 //+------------------------------------------------------------------+
 #property copyright "Copyright 2024, Jules"
 #property link      "https://example.com"
-#property version   "12.00"
+#property version   "13.00"
 #property strict
 
 #include <Trade\Trade.mqh>
@@ -13,19 +13,20 @@
 //--- Input parameters
 input double   InpLotSize       = 0.01;     // Trade Lot Size
 input int      InpSwingLookback = 50;       // Bars to find Swing High/Low
-input int      InpFVGMinSize    = 50;       // Minimum FVG size in Points ($0.50)
+input int      InpFVGMinSize    = 10;       // Minimum FVG size in Points ($0.10)
 input int      InpTakeProfitPts = 2500;     // Target Profit in Points ($25.00)
 input int      InpMagicNum      = 555666;   // Magic Number
 input int      InpStartHour     = 11;       // London Start Hour (MSK)
 input int      InpEndHour       = 21;       // NY End Hour (MSK)
 input int      InpAsianStart    = 1;        // Asian Session Start (MSK)
 input int      InpAsianEnd      = 10;       // Asian Session End (MSK)
-input double   InpBodyMulti     = 1.2;      // Displacement Body Multiplier
+input double   InpBodyMulti     = 1.1;      // Displacement Body Multiplier
 input double   InpVolumeMulti   = 1.0;      // Displacement Volume Multiplier
 input bool     InpUseVolumeProg = false;    // Require Increasing Volume on MSS
 input bool     InpUseVWAP       = true;     // Use VWAP as Value Filter
 input int      InpATRPeriod     = 14;       // ATR Period for Volatility
 input double   InpATRMulti      = 1.0;      // Displacement ATR Multiplier
+input double   InpSLATRMulti    = 2.0;      // ATR Multiplier for Stop Loss
 input ENUM_TIMEFRAMES InpHTF    = PERIOD_H4;// Trend Timeframe
 input ENUM_TIMEFRAMES InpLTF    = PERIOD_M15;// Execution Timeframe
 
@@ -172,13 +173,33 @@ void OnTick()
    if(sweepBullish && (rates[1].close > rates[2].high)) Print("Diag: Bullish MSS Candidate found. Displacement: ", isStrongDisplacement, " VolProg: ", volumeProgression);
    if(sweepBearish && (rates[1].close < rates[2].low)) Print("Diag: Bearish MSS Candidate found. Displacement: ", isStrongDisplacement, " VolProg: ", volumeProgression);
 
-   bool isBullishFVG = (rates[1].low > rates[3].high) && (rates[1].low - rates[3].high > InpFVGMinSize * _Point);
-   bool isBearishFVG = (rates[1].high < rates[3].low) && (rates[3].low - rates[1].high > InpFVGMinSize * _Point);
+   // Multi-Bar Fair Value Gap (FVG) Search (Bars 1, 2, 3)
+   double bullishFVGLevel = 0, bearishFVGLevel = 0;
+   bool isBullishFVG = false, isBearishFVG = false;
+
+   for(int j=1; j<=2; j++) // Check gaps between (j) and (j+2)
+   {
+      if(rates[j].low > rates[j+2].high + InpFVGMinSize * _Point)
+      {
+         isBullishFVG = true;
+         bullishFVGLevel = rates[j+2].high; // Top of the gap
+         break;
+      }
+   }
+   for(int j=1; j<=2; j++)
+   {
+      if(rates[j].high < rates[j+2].low - InpFVGMinSize * _Point)
+      {
+         isBearishFVG = true;
+         bearishFVGLevel = rates[j+2].low; // Bottom of the gap
+         break;
+      }
+   }
 
    //--- Check current positions
    if(AlreadyInTrade()) return;
 
-   //--- 5. Entry Execution (50% retracement of the Displacement move)
+   //--- 5. Entry Execution (Optimized for Gold liquidity)
    double vwap = InpUseVWAP ? GetDailyVWAP() : 0;
    bool bullishValue = !InpUseVWAP || (rates[1].close < vwap);
    bool bearishValue = !InpUseVWAP || (rates[1].close > vwap);
@@ -188,8 +209,9 @@ void OnTick()
 
    if(isBullishBias && mssBullish && isBullishFVG && bullishValue)
    {
-      double entryPrice = (rates[1].high + rates[1].low) / 2.0; // Mean threshold of displacement
-      double sl = rates[2].low - 100 * _Point;
+      // Entry at FVG level or 50% Mean Threshold
+      double entryPrice = (bullishFVGLevel > 0) ? bullishFVGLevel : (rates[1].high + rates[1].low) / 2.0;
+      double sl = rates[2].low - (currentATR * InpSLATRMulti);
       double tp = entryPrice + InpTakeProfitPts * _Point;
 
       if(trade.BuyLimit(InpLotSize, entryPrice, _Symbol, NormalizeDouble(sl, _Digits), NormalizeDouble(tp, _Digits), ORDER_TIME_GTC, 0, "SMC Ultimate Buy"))
@@ -197,8 +219,8 @@ void OnTick()
    }
    else if(isBearishBias && mssBearish && isBearishFVG && bearishValue)
    {
-      double entryPrice = (rates[1].high + rates[1].low) / 2.0;
-      double sl = rates[2].high + 100 * _Point;
+      double entryPrice = (bearishFVGLevel > 0) ? bearishFVGLevel : (rates[1].high + rates[1].low) / 2.0;
+      double sl = rates[2].high + (currentATR * InpSLATRMulti);
       double tp = entryPrice - InpTakeProfitPts * _Point;
 
       if(trade.SellLimit(InpLotSize, entryPrice, _Symbol, NormalizeDouble(sl, _Digits), NormalizeDouble(tp, _Digits), ORDER_TIME_GTC, 0, "SMC Ultimate Sell"))
