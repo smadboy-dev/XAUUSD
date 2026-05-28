@@ -5,29 +5,23 @@
 //+------------------------------------------------------------------+
 #property copyright "Copyright 2024, Jules"
 #property link      "https://example.com"
-#property version   "2.00"
+#property version   "3.00"
 #property strict
 
 #include <Trade\Trade.mqh>
 
 //--- Input parameters
 input double   InpLotSize       = 0.1;      // Trade Lot Size
-input int      InpFVGMinSize    = 100;      // Minimum FVG size in Points
-input int      InpStopLoss      = 1500;     // Max Stop Loss in Points
+input int      InpSwingLookback = 20;       // Bars to find Swing High/Low
+input int      InpFVGMinSize    = 150;      // Minimum FVG size in Points
+input int      InpStopLoss      = 1000;     // Fixed Stop Loss in Points
 input int      InpTakeProfit    = 3000;     // Take Profit in Points
-input int      InpMagicNum      = 222333;   // Magic Number
-input int      InpVolumeMulti   = 2;        // Displacement Volume Multiplier
+input int      InpMagicNum      = 333444;   // Magic Number
+input ENUM_TIMEFRAMES InpHTF    = PERIOD_H4;// Higher Timeframe for Bias
 
 //--- Global variables
 CTrade   trade;
-
-struct FVG_Data
-{
-   double start;
-   double end;
-   bool   isBullish;
-   int    index;
-};
+int      handleHTF_EMA;
 
 //+------------------------------------------------------------------+
 //| Expert initialization function                                   |
@@ -35,7 +29,19 @@ struct FVG_Data
 int OnInit()
 {
    trade.SetExpertMagicNumber(InpMagicNum);
+   // Create handle once in OnInit
+   handleHTF_EMA = iMA(_Symbol, InpHTF, 50, 0, MODE_EMA, PRICE_CLOSE);
+   if(handleHTF_EMA == INVALID_HANDLE) return(INIT_FAILED);
+
    return(INIT_SUCCEEDED);
+}
+
+//+------------------------------------------------------------------+
+//| Expert deinitialization function                                 |
+//+------------------------------------------------------------------+
+void OnDeinit(const int reason)
+{
+   IndicatorRelease(handleHTF_EMA);
 }
 
 //+------------------------------------------------------------------+
@@ -49,66 +55,63 @@ void OnTick()
    if(current_time == last_time) return;
    last_time = current_time;
 
-   //--- Identify Fair Value Gaps (FVG) and Displacement
-   // We look at the last 3 closed candles (indices 1, 2, 3)
-   // A Bullish FVG occurs when Low[1] > High[3]
-   // A Bearish FVG occurs when High[1] < Low[3]
+   //--- 1. Get Higher Timeframe (HTF) Bias
+   double htfEma[];
+   ArraySetAsSeries(htfEma, true);
+   if(CopyBuffer(handleHTF_EMA, 0, 0, 1, htfEma) < 1) return;
+
+   double htfClose = iClose(_Symbol, InpHTF, 1);
+   bool isBullishBias = htfClose > htfEma[0];
+   bool isBearishBias = htfClose < htfEma[0];
+
+   //--- 2. Detect Liquidity Sweeps
+   // Use closed bars for swing detection to avoid repainting
+   // Start from index 3 so the 'sweep' candle (index 2) doesn't include itself in the range
+   int highestIndex = iHighest(_Symbol, _Period, MODE_HIGH, InpSwingLookback, 3);
+   int lowestIndex  = iLowest(_Symbol, _Period, MODE_LOW, InpSwingLookback, 3);
+   double swingHigh = iHigh(_Symbol, _Period, highestIndex);
+   double swingLow  = iLow(_Symbol, _Period, lowestIndex);
 
    MqlRates rates[];
    ArraySetAsSeries(rates, true);
    if(CopyRates(_Symbol, _Period, 0, 10, rates) < 10) return;
 
-   // Check for Displacement (Large Body + High Volume)
-   double avgVolume = 0;
-   for(int i=4; i<10; i++) avgVolume += (double)rates[i].tick_volume;
-   avgVolume /= 6;
+   // A Sweep occurs if bar 2 pierced the swing level but closed back
+   // Signal candle is bar 1 (the displacement candle)
+   bool sweepBullish = (rates[2].low < swingLow) && (rates[2].close > swingLow);
+   bool sweepBearish = (rates[2].high > swingHigh) && (rates[2].close < swingHigh);
 
-   bool isDisplacement = (double)rates[2].tick_volume > (avgVolume * InpVolumeMulti);
-
-   // FVG Check
+   //--- 3. Identify Displacement and FVG
+   // FVG logic: check imbalance between candle 1 and candle 3
    bool isBullishFVG = (rates[1].low > rates[3].high) && (rates[1].low - rates[3].high > InpFVGMinSize * _Point);
    bool isBearishFVG = (rates[1].high < rates[3].low) && (rates[3].low - rates[1].high > InpFVGMinSize * _Point);
 
-   // Market Structure Shift (MSS) simplified: Displacement must break recent high/low
-   bool isBullishMSS = isBullishFVG && (rates[2].close > rates[4].high);
-   bool isBearishMSS = isBearishFVG && (rates[2].close < rates[4].low);
+   //--- 4. Market Structure Shift (MSS)
+   // MSS: Displacement candle (bar 1) breaks the high/low of the candle before the sweep (bar 3 or 4)
+   bool mssBullish = sweepBullish && (rates[1].close > rates[2].high);
+   bool mssBearish = sweepBearish && (rates[1].close < rates[2].low);
 
    //--- Check current positions
    if(AlreadyInTrade()) return;
 
-   if(isBullishMSS && isDisplacement)
+   //--- 5. Entry Execution
+   if(isBullishBias && mssBullish && isBullishFVG)
    {
-      // Buy Entry at the start of the Bullish FVG (the High of the 3rd candle)
-      double entryPrice = rates[3].high;
-      double currentPrice = SymbolInfoDouble(_Symbol, SYMBOL_ASK);
+      double entryPrice = rates[3].high; // Entry at the FVG gap start (institutional retest)
+      double sl = entryPrice - InpStopLoss * _Point;
+      double tp = entryPrice + InpTakeProfit * _Point;
 
-      if(currentPrice > entryPrice) // Entry on retracement
-      {
-         double sl = entryPrice - InpStopLoss * _Point;
-         double tp = entryPrice + InpTakeProfit * _Point;
-
-         if(trade.BuyLimit(InpLotSize, entryPrice, _Symbol, NormalizeDouble(sl, _Digits), NormalizeDouble(tp, _Digits)))
-         {
-            Print("Bullish Institutional Entry (FVG) placed at: ", entryPrice);
-         }
-      }
+      if(trade.BuyLimit(InpLotSize, entryPrice, _Symbol, NormalizeDouble(sl, _Digits), NormalizeDouble(tp, _Digits), "SMC Bullish Entry"))
+         Print("HTF Bullish Bias: SMC Entry placed at ", entryPrice);
    }
-   else if(isBearishMSS && isDisplacement)
+   else if(isBearishBias && mssBearish && isBearishFVG)
    {
-      // Sell Entry at the start of the Bearish FVG (the Low of the 3rd candle)
-      double entryPrice = rates[3].low;
-      double currentPrice = SymbolInfoDouble(_Symbol, SYMBOL_BID);
+      double entryPrice = rates[3].low; // Entry at the FVG gap start (institutional retest)
+      double sl = entryPrice + InpStopLoss * _Point;
+      double tp = entryPrice - InpTakeProfit * _Point;
 
-      if(currentPrice < entryPrice) // Entry on retracement
-      {
-         double sl = entryPrice + InpStopLoss * _Point;
-         double tp = entryPrice - InpTakeProfit * _Point;
-
-         if(trade.SellLimit(InpLotSize, entryPrice, _Symbol, NormalizeDouble(sl, _Digits), NormalizeDouble(tp, _Digits)))
-         {
-            Print("Bearish Institutional Entry (FVG) placed at: ", entryPrice);
-         }
-      }
+      if(trade.SellLimit(InpLotSize, entryPrice, _Symbol, NormalizeDouble(sl, _Digits), NormalizeDouble(tp, _Digits), "SMC Bearish Entry"))
+         Print("HTF Bearish Bias: SMC Entry placed at ", entryPrice);
    }
 }
 
@@ -117,22 +120,15 @@ void OnTick()
 //+------------------------------------------------------------------+
 bool AlreadyInTrade()
 {
-   // Check Positions
    for(int i=PositionsTotal()-1; i>=0; i--)
-   {
       if(PositionSelectByTicket(PositionGetTicket(i)))
-      {
          if(PositionGetInteger(POSITION_MAGIC) == InpMagicNum) return true;
-      }
-   }
-   // Check Pending Orders
+
    for(int i=OrdersTotal()-1; i>=0; i--)
    {
       ulong ticket = OrderGetTicket(i);
       if(OrderSelect(ticket))
-      {
          if(OrderGetInteger(ORDER_MAGIC) == InpMagicNum) return true;
-      }
    }
    return false;
 }
