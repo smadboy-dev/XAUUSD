@@ -5,7 +5,7 @@
 //+------------------------------------------------------------------+
 #property copyright "Copyright 2024, Jules"
 #property link      "https://example.com"
-#property version   "13.00"
+#property version   "15.00"
 #property strict
 
 #include <Trade\Trade.mqh>
@@ -24,6 +24,8 @@ input double   InpBodyMulti     = 1.1;      // Displacement Body Multiplier
 input double   InpVolumeMulti   = 1.0;      // Displacement Volume Multiplier
 input bool     InpUseVolumeProg = false;    // Require Increasing Volume on MSS
 input bool     InpUseVWAP       = true;     // Use VWAP as Value Filter
+input bool     InpUseFVG        = false;    // Require FVG for Entry
+input bool     InpUseBias       = false;    // Require H4 Trend Bias
 input int      InpATRPeriod     = 14;       // ATR Period for Volatility
 input double   InpATRMulti      = 1.0;      // Displacement ATR Multiplier
 input double   InpSLATRMulti    = 2.0;      // ATR Multiplier for Stop Loss
@@ -92,7 +94,9 @@ void OnTick()
 
    if(!isBullishBias && !isBearishBias) return;
 
-   //--- 3. Detect Asian Range & Liquidity Sweeps
+   //--- 3. Detect PDH/PDL & Asian Range & Liquidity Sweeps
+   double pdh = iHigh(_Symbol, PERIOD_D1, 1);
+   double pdl = iLow(_Symbol, PERIOD_D1, 1);
    double asianHigh = 0, asianLow = 0;
    int barsInDay = iBarShift(_Symbol, InpLTF, iTime(_Symbol, PERIOD_D1, 0));
 
@@ -116,13 +120,18 @@ void OnTick()
    double swingHigh = iHigh(_Symbol, InpLTF, highestIndex);
    double swingLow  = iLow(_Symbol, InpLTF, lowestIndex);
 
-   // Use Asian levels if available, otherwise use swing levels
-   double upperLiquidity = (asianHigh > 0) ? asianHigh : swingHigh;
-   double lowerLiquidity = (asianLow > 0) ? asianLow : swingLow;
-
    MqlRates rates[];
    ArraySetAsSeries(rates, true);
    if(CopyRates(_Symbol, InpLTF, 0, 10, rates) < 10) return;
+
+   // Target Liquidity: Find the nearest major level
+   double upperLiquidity = swingHigh;
+   if(asianHigh > 0 && MathAbs(rates[0].close - asianHigh) < MathAbs(rates[0].close - upperLiquidity)) upperLiquidity = asianHigh;
+   if(pdh > 0 && MathAbs(rates[0].close - pdh) < MathAbs(rates[0].close - upperLiquidity)) upperLiquidity = pdh;
+
+   double lowerLiquidity = swingLow;
+   if(asianLow > 0 && MathAbs(rates[0].close - asianLow) < MathAbs(rates[0].close - lowerLiquidity)) lowerLiquidity = asianLow;
+   if(pdl > 0 && MathAbs(rates[0].close - pdl) < MathAbs(rates[0].close - lowerLiquidity)) lowerLiquidity = pdl;
 
    // Get ATR for Volatility Filtering
    double atrBuffer[];
@@ -207,19 +216,27 @@ void OnTick()
    if(mssBullish) Print("Diag: Bullish setup final check: Bias: ", isBullishBias, " FVG: ", isBullishFVG, " Value: ", bullishValue);
    if(mssBearish) Print("Diag: Bearish setup final check: Bias: ", isBearishBias, " FVG: ", isBearishFVG, " Value: ", bearishValue);
 
-   if(isBullishBias && mssBullish && isBullishFVG && bullishValue)
+   // Liquidity Reversal Model: Bias and FVG are now toggleable
+   // Institutional Absorption (High Volume Sweep) OR Institutional Exhaustion (Low Volume Sweep with strong rejection)
+   bool isSignificantSweep = (rates[2].tick_volume > avgVolume * 1.5) ||
+                             (rates[2].tick_volume < avgVolume * 0.7 && (hasLowerRejection || hasUpperRejection));
+
+   bool bullishEntry = mssBullish && (!InpUseFVG || isBullishFVG) && bullishValue && (!InpUseBias || isBullishBias || isSignificantSweep);
+   bool bearishEntry = mssBearish && (!InpUseFVG || isBearishFVG) && bearishValue && (!InpUseBias || isBearishBias || isSignificantSweep);
+
+   if(bullishEntry)
    {
-      // Entry at FVG level or 50% Mean Threshold
-      double entryPrice = (bullishFVGLevel > 0) ? bullishFVGLevel : (rates[1].high + rates[1].low) / 2.0;
+      // Entry at Order Block (Open of the sweep candle) or FVG level
+      double entryPrice = (bullishFVGLevel > 0) ? bullishFVGLevel : rates[2].open;
       double sl = rates[2].low - (currentATR * InpSLATRMulti);
       double tp = entryPrice + InpTakeProfitPts * _Point;
 
       if(trade.BuyLimit(InpLotSize, entryPrice, _Symbol, NormalizeDouble(sl, _Digits), NormalizeDouble(tp, _Digits), ORDER_TIME_GTC, 0, "SMC Ultimate Buy"))
          Print("Session Start: Institutional Buy Limit at ", entryPrice);
    }
-   else if(isBearishBias && mssBearish && isBearishFVG && bearishValue)
+   else if(bearishEntry)
    {
-      double entryPrice = (bearishFVGLevel > 0) ? bearishFVGLevel : (rates[1].high + rates[1].low) / 2.0;
+      double entryPrice = (bearishFVGLevel > 0) ? bearishFVGLevel : rates[2].open;
       double sl = rates[2].high + (currentATR * InpSLATRMulti);
       double tp = entryPrice - InpTakeProfitPts * _Point;
 
@@ -247,13 +264,13 @@ void ManagePositions()
             if(PositionGetInteger(POSITION_TYPE) == POSITION_TYPE_BUY)
             {
                double dist = currentPrice - openPrice;
-               if(dist > 1500 * _Point && currentSL < openPrice)
+               if(dist > 1000 * _Point && currentSL < openPrice)
                   trade.PositionModify(ticket, openPrice + 10 * _Point, PositionGetDouble(POSITION_TP));
             }
             else
             {
                double dist = openPrice - currentPrice;
-               if(dist > 1500 * _Point && (currentSL > openPrice || currentSL == 0))
+               if(dist > 1000 * _Point && (currentSL > openPrice || currentSL == 0))
                   trade.PositionModify(ticket, openPrice - 10 * _Point, PositionGetDouble(POSITION_TP));
             }
          }

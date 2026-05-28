@@ -11,21 +11,24 @@ Trading gold (XAUUSD) effectively requires a combination of fundamental understa
 
 ---
 
-## 2. Institutional SMC (Smart Money Concepts) - Version 13.00
+## 2. Institutional SMC (Smart Money Concepts) - Version 15.00
 To achieve profitability, traders must move beyond basic retail patterns and focus on institutional order flow.
 
 ### Key Advanced Requirements (Ultimate Edition)
 1.  **Session Liquidity & The London Move:** The most profitable moves in XAUUSD often occur at the London open (08:00 GMT). Price frequently sweeps the High or Low of the preceding Asian Session (00:00 - 07:00 GMT) to hunt liquidity before reversing into the main daily trend.
 2.  **Trend Alignment:** Entries must align with the intermediate trend (H4 50 EMA).
 3.  **Displacement Quality:** An institutional 'move' must be aggressive. Displacement candles should have a body size significantly larger (at least 2x) than recent average candles.
-4.  **Effort vs. Result (Volume):** Institutional activity always leaves a footprint in volume. Significant price moves (Displacement) and reversals (Liquidity Sweeps) must be accompanied by a surge in Tick Volume to confirm institutional participation.
+4.  **Effort vs. Result (Absorption & Exhaustion):** Institutional activity is revealed through volume.
+    - **Absorption:** A high-volume sweep indicates institutions absorbing retail stop losses.
+    - **Exhaustion:** An extremely low-volume sweep with a strong rejection wick indicates retail sellers/buyers have been exhausted, allowing institutions to reverse price with minimal effort.
 5.  **Volatility Filtering (ATR):** Gold is highly volatile. Displacement moves must not only be large relative to recent bodies but must also exceed current market volatility (ATR) to ensure the move is statistically significant.
 6.  **Volume Progression:** Institutional interest should increase during the Market Structure Shift. The Displacement candle must show higher volume than the Setup candle.
 7.  **Institutional Value (VWAP):** Institutions seek to buy at a "Discount" (below Daily VWAP) and sell at a "Premium" (above Daily VWAP).
-8.  **Liquidity Sweeps & Rejection:** Price must "hunt" the liquidity sitting above/below previous swing points. A valid institutional sweep is confirmed by a strong rejection wick (at least 20% of candle size), signaling that institutional orders were triggered and price was pushed back.
-9.  **Fair Value Gap (FVG) Optimization:** Institutions leave gaps in liquidity during aggressive moves. The EA searches for these gaps across multiple recent bars to identify high-probability entry zones.
-10. **Institutional Entry (FVG/Mean):** If a Fair Value Gap exists, orders are placed at the gap boundary for a higher fill rate. Otherwise, the Mean Threshold (50%) is used.
-11. **Volatility-Adjusted Risk (ATR SL):** Stop losses must scale with market volatility. Using a fixed point buffer is dangerous in Gold; instead, the EA uses a multiplier of the current ATR to ensure safe breathing room for institutional fluctuations.
+8.  **Liquidity Sweeps & PDH/PDL:** Institutions target high-volume liquidity pools. In addition to Asian session levels, the EA monitors the **Previous Day High (PDH)** and **Previous Day Low (PDL)** as primary targets for liquidity hunts.
+9.  **Institutional Rejection:** A valid sweep is confirmed by a rejection wick (at least 20% of candle size), signaling institutional absorption of retail stops.
+10. **Order Block Entry:** v15.00 optimizes entry by targeting the "Order Block" (the open price of the sweep candle). This is the exact level where institutions initiated their counter-move, providing superior risk-to-reward and higher fill probability.
+11. **Fair Value Gap (FVG) Optimization:** The EA searches for imbalances across multiple recent bars to identify high-probability entry zones.
+12. **Volatility-Adjusted Risk (ATR SL):** Stop losses must scale with market volatility. Using a fixed point buffer is dangerous in Gold; instead, the EA uses a multiplier of the current ATR to ensure safe breathing room for institutional fluctuations.
 
 ### The Ultimate Execution Process
 1.  **Verify Session:** Is the current time between 12:00 and 18:00 GMT?
@@ -36,10 +39,14 @@ To achieve profitability, traders must move beyond basic retail patterns and foc
 
 ---
 
-## 3. Testing the Logic (MetaTrader 5 EA v13.00)
-The `XAUUSD_Institutional_EA.mq5` (v13.00) automates this ultimate institutional process.
+## 3. Testing the Logic (MetaTrader 5 EA v15.00)
+The `XAUUSD_Institutional_EA.mq5` (v15.00) automates this ultimate institutional process.
 
-### Enhancements in 13.00
+### Enhancements in 15.00
+*   **Institutional Exhaustion Detection:** New logic to identify market turning points when retail momentum dies out, confirmed by volume and wick rejection.
+*   **Aggressive Capital Protection:** Faster breakeven trigger (1000 points) and optional Trend/FVG filters to prioritize capital safety.
+*   **Previous Day Liquidity (PDH/PDL):** Integrated daily high/low tracking to capture macro-liquidity reversals.
+*   **Order Block Execution:** Shifts entry logic to institutional order blocks (Sweep Candle Open) for precise execution.
 *   **Dynamic ATR Stop Loss:** Automatically scales stop loss distance based on current market volatility (default 2.0x ATR).
 *   **Multi-Bar FVG Search:** Broader search for Fair Value Gaps across the Market Structure Shift to ensure no institutional footprints are missed.
 *   **Optimized Fill Logic:** Prioritizes FVG boundaries for limit orders to improve the probability of trade execution.
