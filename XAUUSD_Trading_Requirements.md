@@ -11,12 +11,12 @@ Trading gold (XAUUSD) effectively requires a combination of fundamental understa
 
 ---
 
-## 2. Institutional SMC (Smart Money Concepts) - Version 9.00
+## 2. Institutional SMC (Smart Money Concepts) - Version 10.00
 To achieve profitability, traders must move beyond basic retail patterns and focus on institutional order flow.
 
 ### Key Advanced Requirements (Ultimate Edition)
-1.  **Session Liquidity:** Professional institutional flow occurs during the London and New York session overlap. Trading outside these hours (e.g., Asian session) often leads to false breakouts and low volatility.
-2.  **Dual-Trend Alignment:** Entries must align with both the intermediate trend (H4) and the macro trend (D1 200 EMA). Trading against the macro trend is a high-risk activity.
+1.  **Session Liquidity & The London Move:** The most profitable moves in XAUUSD often occur at the London open (08:00 GMT). Price frequently sweeps the High or Low of the preceding Asian Session (00:00 - 07:00 GMT) to hunt liquidity before reversing into the main daily trend.
+2.  **Trend Alignment:** Entries must align with the intermediate trend (H4 50 EMA).
 3.  **Displacement Quality:** An institutional 'move' must be aggressive. Displacement candles should have a body size significantly larger (at least 2x) than recent average candles.
 4.  **Effort vs. Result (Volume):** Institutional activity always leaves a footprint in volume. Significant price moves (Displacement) and reversals (Liquidity Sweeps) must be accompanied by a surge in Tick Volume to confirm institutional participation.
 5.  **Volatility Filtering (ATR):** Gold is highly volatile. Displacement moves must not only be large relative to recent bodies but must also exceed current market volatility (ATR) to ensure the move is statistically significant.
@@ -34,10 +34,12 @@ To achieve profitability, traders must move beyond basic retail patterns and foc
 
 ---
 
-## 3. Testing the Logic (MetaTrader 5 EA v9.00)
-The `XAUUSD_Institutional_EA.mq5` (v9.00) automates this ultimate institutional process.
+## 3. Testing the Logic (MetaTrader 5 EA v10.00)
+The `XAUUSD_Institutional_EA.mq5` (v10.00) automates this ultimate institutional process.
 
-### Enhancements in v9.00
+### Enhancements in 10.00
+*   **Asian Range Liquidity Sweep:** Explicitly targets the Highs and Lows of the Asian session as primary liquidity zones.
+*   **London Session Optimization:** Shifted default start time to 08:00 GMT to capture the London Move.
 *   **Institutional Session Filter:** Restricts trading to high-volume hours.
 *   **Adaptive Volatility Filter (ATR):** Dynamically adjusts displacement requirements based on current market volatility.
 *   **Rejection Wick Confirmation:** Added wick analysis to liquidity sweeps to confirm institutional order flow rejection.

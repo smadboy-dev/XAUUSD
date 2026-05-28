@@ -5,19 +5,21 @@
 //+------------------------------------------------------------------+
 #property copyright "Copyright 2024, Jules"
 #property link      "https://example.com"
-#property version   "9.00"
+#property version   "10.00"
 #property strict
 
 #include <Trade\Trade.mqh>
 
 //--- Input parameters
-input double   InpLotSize       = 0.1;      // Trade Lot Size
+input double   InpLotSize       = 0.01;     // Trade Lot Size
 input int      InpSwingLookback = 30;       // Bars to find Swing High/Low
-input int      InpFVGMinSize    = 250;      // Minimum FVG size in Points
-input int      InpTakeProfitPts = 5000;     // Target Profit in Points
+input int      InpFVGMinSize    = 100;      // Minimum FVG size in Points ($1.00)
+input int      InpTakeProfitPts = 2500;     // Target Profit in Points ($25.00)
 input int      InpMagicNum      = 555666;   // Magic Number
-input int      InpStartHour     = 12;       // London/NY Overlap Start
-input int      InpEndHour       = 18;       // overlap End
+input int      InpStartHour     = 8;        // London Start Hour
+input int      InpEndHour       = 18;       // NY End Hour
+input int      InpAsianStart    = 0;        // Asian Session Start
+input int      InpAsianEnd      = 7;        // Asian Session End
 input double   InpBodyMulti     = 2.0;      // Displacement Body Multiplier
 input double   InpVolumeMulti   = 1.1;      // Displacement Volume Multiplier
 input bool     InpUseVolumeProg = false;    // Require Increasing Volume on MSS
@@ -77,25 +79,45 @@ void OnTick()
    if(current_time == last_time) return;
    last_time = current_time;
 
-   //--- 2. Dual-Trend Bias (H4 + D1)
-   double htfEma[], d1Ema[];
+   //--- 2. Trend Bias (H4)
+   double htfEma[];
    ArraySetAsSeries(htfEma, true);
-   ArraySetAsSeries(d1Ema, true);
-   if(CopyBuffer(handleHTF_EMA, 0, 0, 1, htfEma) < 1 || CopyBuffer(handleD1_EMA, 0, 0, 1, d1Ema) < 1) return;
+   if(CopyBuffer(handleHTF_EMA, 0, 0, 1, htfEma) < 1) return;
 
    double htfClose = iClose(_Symbol, InpHTF, 1);
-   double d1Close  = iClose(_Symbol, PERIOD_D1, 1);
 
-   bool isBullishBias = (htfClose > htfEma[0]) && (d1Close > d1Ema[0]);
-   bool isBearishBias = (htfClose < htfEma[0]) && (d1Close < d1Ema[0]);
+   bool isBullishBias = (htfClose > htfEma[0]);
+   bool isBearishBias = (htfClose < htfEma[0]);
 
    if(!isBullishBias && !isBearishBias) return;
 
-   //--- 3. Detect Liquidity Sweeps on LTF
+   //--- 3. Detect Asian Range & Liquidity Sweeps
+   double asianHigh = 0, asianLow = 0;
+   int barsInDay = iBarShift(_Symbol, InpLTF, iTime(_Symbol, PERIOD_D1, 0));
+
+   for(int i = barsInDay; i >= 0; i--)
+   {
+      datetime barTime = iTime(_Symbol, InpLTF, i);
+      MqlDateTime mqlTime;
+      TimeToStruct(barTime, mqlTime);
+
+      if(mqlTime.hour >= InpAsianStart && mqlTime.hour < InpAsianEnd)
+      {
+         double high = iHigh(_Symbol, InpLTF, i);
+         double low  = iLow(_Symbol, InpLTF, i);
+         if(asianHigh == 0 || high > asianHigh) asianHigh = high;
+         if(asianLow == 0 || low < asianLow) asianLow = low;
+      }
+   }
+
    int highestIndex = iHighest(_Symbol, InpLTF, MODE_HIGH, InpSwingLookback, 3);
    int lowestIndex  = iLowest(_Symbol, InpLTF, MODE_LOW, InpSwingLookback, 3);
    double swingHigh = iHigh(_Symbol, InpLTF, highestIndex);
    double swingLow  = iLow(_Symbol, InpLTF, lowestIndex);
+
+   // Use Asian levels if available, otherwise use swing levels
+   double upperLiquidity = (asianHigh > 0) ? asianHigh : swingHigh;
+   double lowerLiquidity = (asianLow > 0) ? asianLow : swingLow;
 
    MqlRates rates[];
    ArraySetAsSeries(rates, true);
@@ -132,9 +154,9 @@ void OnTick()
    bool hasLowerRejection = (candleSize2 > 0) && (lowerWick2 / candleSize2 > 0.3);
    bool hasUpperRejection = (candleSize2 > 0) && (upperWick2 / candleSize2 > 0.3);
 
-   bool sweepBullish = (rates[2].low < swingLow) && (rates[2].close > swingLow) &&
+   bool sweepBullish = (rates[2].low < lowerLiquidity) && (rates[2].close > lowerLiquidity) &&
                        (rates[2].tick_volume > avgVolume) && hasLowerRejection;
-   bool sweepBearish = (rates[2].high > swingHigh) && (rates[2].close < swingHigh) &&
+   bool sweepBearish = (rates[2].high > upperLiquidity) && (rates[2].close < upperLiquidity) &&
                        (rates[2].tick_volume > avgVolume) && hasUpperRejection;
 
    //--- 4. Market Structure Shift (MSS) + FVG
