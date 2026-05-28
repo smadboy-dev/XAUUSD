@@ -57,4 +57,16 @@ Gold is highly volatile and can experience large price swings in seconds.
 
 ---
 
+## 6. Testing the Logic (MetaTrader 5 EA)
+To verify this research, an Expert Advisor (EA) source code file `XAUUSD_TrendFollower_EA.mq5` has been provided.
+
+### How to Install and Run
+1.  **Open MT5:** Open your MetaTrader 5 terminal.
+2.  **Open Data Folder:** Go to `File` -> `Open Data Folder`.
+3.  **Copy File:** Navigate to `MQL5/Experts` and paste the `XAUUSD_TrendFollower_EA.mq5` file.
+4.  **Compile:** Open MetaEditor (`F4`), find the file in the Navigator, and click `Compile`.
+5.  **Backtest:** Open the Strategy Tester (`Ctrl+R`), select the EA, choose `XAUUSD`, and run it on the `H1` or `D1` timeframe to see the performance of the trend-following logic.
+
+---
+
 *Disclaimer: Trading XAUUSD carries a high level of risk and may not be suitable for all investors. This report is for educational purposes and does not constitute financial advice.*
