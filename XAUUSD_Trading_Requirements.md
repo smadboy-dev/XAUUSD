@@ -58,7 +58,7 @@ Gold is highly volatile and can experience large price swings in seconds.
 ---
 
 ## 6. Testing the Logic (MetaTrader 5 EA)
-To verify this research, an Expert Advisor (EA) source code file `XAUUSD_TrendFollower_EA.mq5` has been provided.
+To verify this research, an enhanced Expert Advisor (EA) source code file `XAUUSD_TrendFollower_EA.mq5` has been provided. This version (v1.10) includes ADX filtering and strict triple EMA alignment to minimize false positives during ranging markets.
 
 ### How to Install and Run
 1.  **Open MT5:** Open your MetaTrader 5 terminal.
