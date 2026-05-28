@@ -11,59 +11,51 @@ Trading gold (XAUUSD) effectively requires a combination of fundamental understa
 
 ---
 
-## 2. Institutional SMC (Smart Money Concepts) - Version 17.00
-To achieve profitability, traders must move beyond basic retail patterns and focus on institutional order flow.
+## 2. Institutional SMC (Smart Money Concepts) - Version 18.00 (Alpha)
+To achieve profitability, traders must move beyond basic retail patterns and focus on true institutional order flow. The 18.00 "Alpha" version shifts from indicator-based bias to raw structural flow.
 
-### Key Advanced Requirements (Institutional Pro)
-1.  **Session Liquidity & The London Move:** The most profitable moves in XAUUSD often occur at the London open (08:00 GMT). Price frequently sweeps the High or Low of the preceding Asian Session (00:00 - 07:00 GMT) to hunt liquidity before reversing into the main daily trend.
-2.  **Trend Alignment:** Entries must align with the intermediate trend (H4 50 EMA).
-3.  **Displacement Quality:** An institutional 'move' must be aggressive. Displacement candles should have a body size significantly larger (at least 2x) than recent average candles.
+### Key Advanced Requirements (Institutional Alpha)
+1.  **H4 Structural Flow (Primary Filter):** The EA no longer relies on EMAs for trend. It requires real H4 market structure: **HH/HL** for Bullish and **LH/LL** for Bearish. We only trade in the direction of the macro structural break.
+2.  **Institutional Killzones:** Most Gold "fake-outs" happen during low-liquidity gaps. The Alpha version restricts trading to two specific high-volume windows:
+    - **London Open (11:00 - 13:00 MSK)**
+    - **NY Open/Overlap (15:30 - 19:30 MSK)**
+3.  **Volume Climax Displacement:** Institutional participation is confirmed by **Volume > 2.0x the 20-bar average**. If price moves without volume, it is considered a retail trap and ignored.
 4.  **Effort vs. Result (Absorption & Exhaustion):** Institutional activity is revealed through volume.
     - **Absorption:** A high-volume sweep indicates institutions absorbing retail stop losses.
-    - **Exhaustion:** An extremely low-volume sweep with a strong rejection wick indicates retail sellers/buyers have been exhausted, allowing institutions to reverse price with minimal effort.
-5.  **Volatility Filtering (ATR):** Gold is highly volatile. Displacement moves must not only be large relative to recent bodies but must also exceed current market volatility (ATR) to ensure the move is statistically significant.
-6.  **Volume Progression:** Institutional interest should increase during the Market Structure Shift. The Displacement candle must show higher volume than the Setup candle.
-7.  **Institutional Value (VWAP):** Institutions seek to buy at a "Discount" (below Daily VWAP) and sell at a "Premium" (above Daily VWAP).
-8.  **Liquidity Sweeps & PDH/PDL:** Institutions target high-volume liquidity pools. In addition to Asian session levels, the EA monitors the **Previous Day High (PDH)** and **Previous Day Low (PDL)** as primary targets for liquidity hunts.
-9.  **Institutional Rejection:** A valid sweep is confirmed by a rejection wick (at least 20% of candle size), signaling institutional absorption of retail stops.
-10. **Order Block Entry:** v15.00 optimizes entry by targeting the "Order Block" (the open price of the sweep candle). This is the exact level where institutions initiated their counter-move, providing superior risk-to-reward and higher fill probability.
-11. **Fair Value Gap (FVG) Optimization:** The EA searches for imbalances across multiple recent bars to identify high-probability entry zones.
-12. **Volatility-Adjusted Risk (ATR SL):** Stop losses must scale with market volatility. Using a fixed point buffer is dangerous in Gold; instead, the EA uses a multiplier of the current ATR to ensure safe breathing room for institutional fluctuations.
-
-### The Ultimate Execution Process
-1.  **Verify Session:** Is the current time between 12:00 and 18:00 GMT?
-2.  **Confirm Dual Bias:** Is price above/below the D1 200 EMA and H4 50 EMA?
-3.  **Wait for Sweep:** Wait for price to clear a significant liquidity zone.
-4.  **Detect MSS:** Look for an aggressive Displacement candle breaking structure.
-5.  **Set Limit Order:** Place a Buy/Sell Limit at the 50% level of the displacement move.
+    - **Exhaustion:** An extremely low-volume sweep with a strong rejection wick indicates retail sellers/buyers have been exhausted.
+5.  **Volatility Filtering (ATR):** Gold is highly volatile. Displacement moves must not only be large relative to recent bodies but must also exceed 50% of the current market volatility (ATR).
+6.  **Volatility-Adjusted Risk (ATR SL):** Stop losses must scale with market volatility. The EA uses a 50-point buffer on the sweep candle's absolute high/low.
+7.  **Liquidity Sweeps & PDH/PDL:** Institutions target high-volume liquidity pools: **Previous Day High (PDH)**, **Previous Day Low (PDL)**, and the **Asian Range (01:00-10:00 MSK)**.
+8.  **Institutional Rejection:** A valid sweep is confirmed by a rejection wick (at least 30% of candle size), signaling institutional absorption.
+9.  **Mean Threshold Entry:** v18.00 targets the "Mean Threshold" (50% level) of the sweep candle, offering superior Risk/Reward compared to entry at the breakout.
+10. **Trade Scarcity (1 Per Day):** The EA focuses on quality over quantity. It is restricted to a maximum of **1 trade per day** to avoid over-trading during chop.
 
 ---
 
-## 3. Testing the Logic (MetaTrader 5 EA v17.00)
-The `XAUUSD_Institutional_EA.mq5` (v17.00) automates this ultimate institutional process.
+## 3. Testing the Logic (MetaTrader 5 EA v18.00 Alpha)
+The `XAUUSD_Institutional_EA.mq5` (v18.00) automates this ultimate institutional process.
 
-### Enhancements in 17.00 (Institutional Pro)
-*   **Technical Quality Control:** Increased body and volume multipliers (1.5x) and added a 60% minimum body-to-size ratio check for displacement candles.
-*   **ATR Spike Filter:** Automatically detects and skips setups during news-driven extreme volatility (>2.5x 100-bar average ATR).
-*   **Spread Filter:** Protects against wide-spread execution slippage (default max 50 points).
-*   **RR-Based Breakeven:** Automatically moves SL to entry (plus 50-point buffer) once trade reaches 1.5R profit.
-*   **Dynamic Take Profit (RR 1:3):** Math-based 1:3 Risk/Reward model to capture Gold's volatile extensions.
-*   **Mean Threshold Entry:** Midpoint entry of the sweep candle to optimize Risk/Reward.
-*   **Friday Market Exit:** Automated closing of all positions at 22:00 MSK on Fridays to eliminate weekend gap risk.
-*   **Tiered Liquidity Priority:** Prioritizes Previous Day High/Low (PDH/PDL) and Asian Range over minor local swings.
-*   **Filter Diagnostics:** Real-time logging of specific levels and filter reasons in the MT5 Experts tab.
-*   **London Session Optimization (MSK Alignment):** 11:00 MSK capture of the London Move.
+### Enhancements in 18.00 Alpha
+*   **Structural Flow Engine:** Direct H4 HH/HL/LH/LL analysis.
+*   **Killzone Enforcement:** Hard-coded time filters for MSK session alignment.
+*   **Climax Volume Filter:** 2.0x multiplier for displacement confirmation.
+*   **News-Volatility Protection:** ATR Spike Filter automatically skips setups if ATR > 2.5x the average.
+*   **Institutional Breakeven:** Moves SL to entry (+20 points) at 1.5R profit.
+*   **Dynamic Take Profit (RR 1:3):** Standard 1:3 model to catch Gold's impulsive waves.
+*   **Friday Market Exit:** Automated closing of all positions at 22:00 MSK on Fridays.
+*   **Magic Number Update:** 888999 for Alpha tracking.
 
 ### Important: Session Time Alignment (Moscow Time MSK)
-The EA is pre-configured for a **Moscow Time (GMT+3)** market watch. If your broker uses a different server time (e.g., GMT+2/EET), you must adjust the session inputs accordingly:
-*   **London Open:** MSK 11:00 -> Adjust by +/- offset.
-*   **Asian Session:** MSK 03:00 - 10:00 -> Adjust by +/- offset.
+The EA is pre-configured for a **Moscow Time (GMT+3)** market watch.
+*   **London Killzone:** 11:00-13:00 MSK.
+*   **NY Killzone:** 15:30-19:30 MSK.
+*   **Asian Range:** 01:00-10:00 MSK.
 
 ### How to Install and Run
 1.  **Open MT5:** Open MetaTrader 5.
 2.  **MQL5 Folder:** `File` -> `Open Data Folder` -> `MQL5/Experts`.
 3.  **Paste & Compile:** Paste the file and compile in MetaEditor (`F4`).
-4.  **Backtest:** Run on `XAUUSD` using the `H1` or `M15` timeframe. The EA will automatically manage its own session and trend logic.
+4.  **Backtest:** Run on `XAUUSD` using the `M15` timeframe. The EA will automatically handle H4 structure and D1/Asian liquidity levels.
 
 ---
 
