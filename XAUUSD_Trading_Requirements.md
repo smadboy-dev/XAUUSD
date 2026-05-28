@@ -11,15 +11,16 @@ Trading gold (XAUUSD) effectively requires a combination of fundamental understa
 
 ---
 
-## 2. Institutional SMC (Smart Money Concepts) - Version 5.00
+## 2. Institutional SMC (Smart Money Concepts) - Version 6.00
 To achieve profitability, traders must move beyond basic retail patterns and focus on institutional order flow.
 
 ### Key Advanced Requirements (Ultimate Edition)
 1.  **Session Liquidity:** Professional institutional flow occurs during the London and New York session overlap. Trading outside these hours (e.g., Asian session) often leads to false breakouts and low volatility.
 2.  **Dual-Trend Alignment:** Entries must align with both the intermediate trend (H4) and the macro trend (D1 200 EMA). Trading against the macro trend is a high-risk activity.
 3.  **Displacement Quality:** An institutional 'move' must be aggressive. Displacement candles should have a body size significantly larger (at least 2x) than recent average candles.
-4.  **Liquidity Sweeps:** Price must "hunt" the liquidity (stop losses) sitting above/below previous swing points before the institutional reversal begins.
-5.  **Mean Threshold Entry:** Institutions often fill orders at the 50% retracement (Mean Threshold) of an impulsive move. Entering at this level provides a superior Risk-to-Reward ratio.
+4.  **Effort vs. Result (Volume):** Institutional activity always leaves a footprint in volume. Significant price moves (Displacement) and reversals (Liquidity Sweeps) must be accompanied by a surge in Tick Volume to confirm institutional participation.
+5.  **Liquidity Sweeps:** Price must "hunt" the liquidity (stop losses) sitting above/below previous swing points before the institutional reversal begins.
+6.  **Mean Threshold Entry:** Institutions often fill orders at the 50% retracement (Mean Threshold) of an impulsive move. Entering at this level provides a superior Risk-to-Reward ratio.
 
 ### The Ultimate Execution Process
 1.  **Verify Session:** Is the current time between 12:00 and 18:00 GMT?
@@ -30,11 +31,13 @@ To achieve profitability, traders must move beyond basic retail patterns and foc
 
 ---
 
-## 3. Testing the Logic (MetaTrader 5 EA v5.00)
-The `XAUUSD_Institutional_EA.mq5` (v5.00) automates this ultimate institutional process.
+## 3. Testing the Logic (MetaTrader 5 EA v6.00)
+The `XAUUSD_Institutional_EA.mq5` (v6.00) automates this ultimate institutional process.
 
-### Enhancements in v5.00
+### Enhancements in v6.00
 *   **Institutional Session Filter:** Restricts trading to high-volume hours.
+*   **Volume-Enhanced Displacement:** Requires a surge in Tick Volume (Effort) to validate price moves (Result).
+*   **Volume-Confirmed Sweeps:** Liquidity sweeps must occur on high-volume candles to filter out retail noise.
 *   **Displacement Body Filter:** Ensures move strength is valid Smart Money activity.
 *   **Macro Trend Filter:** Integrates Daily 200 EMA for ultimate bias confirmation.
 *   **Mean Threshold Entry:** Optimized limit order placement for maximum RR.

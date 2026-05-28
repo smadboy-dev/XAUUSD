@@ -5,7 +5,7 @@
 //+------------------------------------------------------------------+
 #property copyright "Copyright 2024, Jules"
 #property link      "https://example.com"
-#property version   "5.00"
+#property version   "6.00"
 #property strict
 
 #include <Trade\Trade.mqh>
@@ -19,6 +19,7 @@ input int      InpMagicNum      = 555666;   // Magic Number
 input int      InpStartHour     = 12;       // London/NY Overlap Start
 input int      InpEndHour       = 18;       // overlap End
 input double   InpBodyMulti     = 2.0;      // Displacement Body Multiplier
+input double   InpVolumeMulti   = 1.5;      // Displacement Volume Multiplier
 input ENUM_TIMEFRAMES InpHTF    = PERIOD_H4;// Trend Timeframe
 input ENUM_TIMEFRAMES InpLTF    = PERIOD_M15;// Execution Timeframe
 
@@ -93,16 +94,23 @@ void OnTick()
    ArraySetAsSeries(rates, true);
    if(CopyRates(_Symbol, InpLTF, 0, 10, rates) < 10) return;
 
-   // Displacement Quality Check (Body Size)
+   // Displacement Quality Check (Body Size & Volume)
    double avgBody = 0;
-   for(int i=4; i<10; i++) avgBody += MathAbs(rates[i].close - rates[i].open);
+   long   avgVolume = 0;
+   for(int i=4; i<10; i++)
+   {
+      avgBody += MathAbs(rates[i].close - rates[i].open);
+      avgVolume += rates[i].tick_volume;
+   }
    avgBody /= 6;
-   double currentBody = MathAbs(rates[1].close - rates[1].open);
-   bool isStrongDisplacement = currentBody > (avgBody * InpBodyMulti);
+   avgVolume /= 6;
 
-   // Sweep Candle is rates[2]
-   bool sweepBullish = (rates[2].low < swingLow) && (rates[2].close > swingLow);
-   bool sweepBearish = (rates[2].high > swingHigh) && (rates[2].close < swingHigh);
+   double currentBody = MathAbs(rates[1].close - rates[1].open);
+   bool isStrongDisplacement = (currentBody > (avgBody * InpBodyMulti)) && (rates[1].tick_volume > (avgVolume * InpVolumeMulti));
+
+   // Sweep Candle is rates[2] (Requires Volume Confirmation)
+   bool sweepBullish = (rates[2].low < swingLow) && (rates[2].close > swingLow) && (rates[2].tick_volume > avgVolume);
+   bool sweepBearish = (rates[2].high > swingHigh) && (rates[2].close < swingHigh) && (rates[2].tick_volume > avgVolume);
 
    //--- 4. Market Structure Shift (MSS) + FVG
    bool mssBullish = sweepBullish && (rates[1].close > rates[2].high) && isStrongDisplacement;
