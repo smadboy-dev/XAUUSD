@@ -5,27 +5,27 @@
 //+------------------------------------------------------------------+
 #property copyright "Copyright 2024, Jules"
 #property link      "https://example.com"
-#property version   "11.00"
+#property version   "12.00"
 #property strict
 
 #include <Trade\Trade.mqh>
 
 //--- Input parameters
 input double   InpLotSize       = 0.01;     // Trade Lot Size
-input int      InpSwingLookback = 30;       // Bars to find Swing High/Low
-input int      InpFVGMinSize    = 100;      // Minimum FVG size in Points ($1.00)
+input int      InpSwingLookback = 50;       // Bars to find Swing High/Low
+input int      InpFVGMinSize    = 50;       // Minimum FVG size in Points ($0.50)
 input int      InpTakeProfitPts = 2500;     // Target Profit in Points ($25.00)
 input int      InpMagicNum      = 555666;   // Magic Number
 input int      InpStartHour     = 11;       // London Start Hour (MSK)
 input int      InpEndHour       = 21;       // NY End Hour (MSK)
-input int      InpAsianStart    = 3;        // Asian Session Start (MSK)
+input int      InpAsianStart    = 1;        // Asian Session Start (MSK)
 input int      InpAsianEnd      = 10;       // Asian Session End (MSK)
-input double   InpBodyMulti     = 2.0;      // Displacement Body Multiplier
-input double   InpVolumeMulti   = 1.1;      // Displacement Volume Multiplier
+input double   InpBodyMulti     = 1.2;      // Displacement Body Multiplier
+input double   InpVolumeMulti   = 1.0;      // Displacement Volume Multiplier
 input bool     InpUseVolumeProg = false;    // Require Increasing Volume on MSS
 input bool     InpUseVWAP       = true;     // Use VWAP as Value Filter
 input int      InpATRPeriod     = 14;       // ATR Period for Volatility
-input double   InpATRMulti      = 1.2;      // Displacement ATR Multiplier
+input double   InpATRMulti      = 1.0;      // Displacement ATR Multiplier
 input ENUM_TIMEFRAMES InpHTF    = PERIOD_H4;// Trend Timeframe
 input ENUM_TIMEFRAMES InpLTF    = PERIOD_M15;// Execution Timeframe
 
@@ -151,13 +151,16 @@ void OnTick()
    double lowerWick2 = (rates[2].open < rates[2].close) ? (rates[2].open - rates[2].low) : (rates[2].close - rates[2].low);
    double upperWick2 = (rates[2].open > rates[2].close) ? (rates[2].high - rates[2].open) : (rates[2].high - rates[2].close);
 
-   bool hasLowerRejection = (candleSize2 > 0) && (lowerWick2 / candleSize2 > 0.3);
-   bool hasUpperRejection = (candleSize2 > 0) && (upperWick2 / candleSize2 > 0.3);
+   bool hasLowerRejection = (candleSize2 > 0) && (lowerWick2 / candleSize2 > 0.2);
+   bool hasUpperRejection = (candleSize2 > 0) && (upperWick2 / candleSize2 > 0.2);
 
    bool sweepBullish = (rates[2].low < lowerLiquidity) && (rates[2].close > lowerLiquidity) &&
                        (rates[2].tick_volume > avgVolume) && hasLowerRejection;
    bool sweepBearish = (rates[2].high > upperLiquidity) && (rates[2].close < upperLiquidity) &&
                        (rates[2].tick_volume > avgVolume) && hasUpperRejection;
+
+   if(sweepBullish) Print("Diag: Bullish Sweep Detected at ", lowerLiquidity);
+   if(sweepBearish) Print("Diag: Bearish Sweep Detected at ", upperLiquidity);
 
    //--- 4. Market Structure Shift (MSS) + FVG
    // Volume Progression: Displacement volume (rates[1]) must be greater than Setup volume (rates[2])
@@ -165,6 +168,9 @@ void OnTick()
 
    bool mssBullish = sweepBullish && (rates[1].close > rates[2].high) && isStrongDisplacement && volumeProgression;
    bool mssBearish = sweepBearish && (rates[1].close < rates[2].low) && isStrongDisplacement && volumeProgression;
+
+   if(sweepBullish && (rates[1].close > rates[2].high)) Print("Diag: Bullish MSS Candidate found. Displacement: ", isStrongDisplacement, " VolProg: ", volumeProgression);
+   if(sweepBearish && (rates[1].close < rates[2].low)) Print("Diag: Bearish MSS Candidate found. Displacement: ", isStrongDisplacement, " VolProg: ", volumeProgression);
 
    bool isBullishFVG = (rates[1].low > rates[3].high) && (rates[1].low - rates[3].high > InpFVGMinSize * _Point);
    bool isBearishFVG = (rates[1].high < rates[3].low) && (rates[3].low - rates[1].high > InpFVGMinSize * _Point);
@@ -176,6 +182,9 @@ void OnTick()
    double vwap = InpUseVWAP ? GetDailyVWAP() : 0;
    bool bullishValue = !InpUseVWAP || (rates[1].close < vwap);
    bool bearishValue = !InpUseVWAP || (rates[1].close > vwap);
+
+   if(mssBullish) Print("Diag: Bullish setup final check: Bias: ", isBullishBias, " FVG: ", isBullishFVG, " Value: ", bullishValue);
+   if(mssBearish) Print("Diag: Bearish setup final check: Bias: ", isBearishBias, " FVG: ", isBearishFVG, " Value: ", bearishValue);
 
    if(isBullishBias && mssBullish && isBullishFVG && bullishValue)
    {

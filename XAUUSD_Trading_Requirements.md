@@ -11,7 +11,7 @@ Trading gold (XAUUSD) effectively requires a combination of fundamental understa
 
 ---
 
-## 2. Institutional SMC (Smart Money Concepts) - Version 11.00
+## 2. Institutional SMC (Smart Money Concepts) - Version 12.00
 To achieve profitability, traders must move beyond basic retail patterns and focus on institutional order flow.
 
 ### Key Advanced Requirements (Ultimate Edition)
@@ -34,10 +34,12 @@ To achieve profitability, traders must move beyond basic retail patterns and foc
 
 ---
 
-## 3. Testing the Logic (MetaTrader 5 EA v11.00)
-The `XAUUSD_Institutional_EA.mq5` (v11.00) automates this ultimate institutional process.
+## 3. Testing the Logic (MetaTrader 5 EA v12.00)
+The `XAUUSD_Institutional_EA.mq5` (v12.00) automates this ultimate institutional process.
 
-### Enhancements in 11.00
+### Enhancements in 12.00
+*   **High Sensitivity Signal Logic:** Relaxed volume, body, and volatility multipliers to increase trade frequency in the Gold market.
+*   **Filter Diagnostics:** Integrated real-time 'Diag' logging in the MT5 Experts tab to track setup filtering and identify why potential trades are being skipped.
 *   **Asian Range Liquidity Sweep:** Explicitly targets the Highs and Lows of the Asian session as primary liquidity zones.
 *   **London Session Optimization (MSK Alignment):** Shifted default start time to 11:00 MSK (GMT+3) to capture the London Move.
 *   **Institutional Session Filter:** Restricts trading to high-volume hours.
