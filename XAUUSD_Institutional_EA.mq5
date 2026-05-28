@@ -5,7 +5,7 @@
 //+------------------------------------------------------------------+
 #property copyright "Copyright 2024, Jules"
 #property link      "https://example.com"
-#property version   "10.00"
+#property version   "11.00"
 #property strict
 
 #include <Trade\Trade.mqh>
@@ -16,10 +16,10 @@ input int      InpSwingLookback = 30;       // Bars to find Swing High/Low
 input int      InpFVGMinSize    = 100;      // Minimum FVG size in Points ($1.00)
 input int      InpTakeProfitPts = 2500;     // Target Profit in Points ($25.00)
 input int      InpMagicNum      = 555666;   // Magic Number
-input int      InpStartHour     = 8;        // London Start Hour
-input int      InpEndHour       = 18;       // NY End Hour
-input int      InpAsianStart    = 0;        // Asian Session Start
-input int      InpAsianEnd      = 7;        // Asian Session End
+input int      InpStartHour     = 11;       // London Start Hour (MSK)
+input int      InpEndHour       = 21;       // NY End Hour (MSK)
+input int      InpAsianStart    = 3;        // Asian Session Start (MSK)
+input int      InpAsianEnd      = 10;       // Asian Session End (MSK)
 input double   InpBodyMulti     = 2.0;      // Displacement Body Multiplier
 input double   InpVolumeMulti   = 1.1;      // Displacement Volume Multiplier
 input bool     InpUseVolumeProg = false;    // Require Increasing Volume on MSS

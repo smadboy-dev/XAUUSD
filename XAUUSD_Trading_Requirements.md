@@ -11,7 +11,7 @@ Trading gold (XAUUSD) effectively requires a combination of fundamental understa
 
 ---
 
-## 2. Institutional SMC (Smart Money Concepts) - Version 10.00
+## 2. Institutional SMC (Smart Money Concepts) - Version 11.00
 To achieve profitability, traders must move beyond basic retail patterns and focus on institutional order flow.
 
 ### Key Advanced Requirements (Ultimate Edition)
@@ -34,12 +34,12 @@ To achieve profitability, traders must move beyond basic retail patterns and foc
 
 ---
 
-## 3. Testing the Logic (MetaTrader 5 EA v10.00)
-The `XAUUSD_Institutional_EA.mq5` (v10.00) automates this ultimate institutional process.
+## 3. Testing the Logic (MetaTrader 5 EA v11.00)
+The `XAUUSD_Institutional_EA.mq5` (v11.00) automates this ultimate institutional process.
 
-### Enhancements in 10.00
+### Enhancements in 11.00
 *   **Asian Range Liquidity Sweep:** Explicitly targets the Highs and Lows of the Asian session as primary liquidity zones.
-*   **London Session Optimization:** Shifted default start time to 08:00 GMT to capture the London Move.
+*   **London Session Optimization (MSK Alignment):** Shifted default start time to 11:00 MSK (GMT+3) to capture the London Move.
 *   **Institutional Session Filter:** Restricts trading to high-volume hours.
 *   **Adaptive Volatility Filter (ATR):** Dynamically adjusts displacement requirements based on current market volatility.
 *   **Rejection Wick Confirmation:** Added wick analysis to liquidity sweeps to confirm institutional order flow rejection.
@@ -51,6 +51,11 @@ The `XAUUSD_Institutional_EA.mq5` (v10.00) automates this ultimate institutional
 *   **Displacement Body Filter:** Ensures move strength is valid Smart Money activity.
 *   **Macro Trend Filter:** Integrates Daily 200 EMA for ultimate bias confirmation.
 *   **Mean Threshold Entry:** Optimized limit order placement for maximum RR.
+
+### Important: Session Time Alignment (Moscow Time MSK)
+The EA is pre-configured for a **Moscow Time (GMT+3)** market watch. If your broker uses a different server time (e.g., GMT+2/EET), you must adjust the session inputs accordingly:
+*   **London Open:** MSK 11:00 -> Adjust by +/- offset.
+*   **Asian Session:** MSK 03:00 - 10:00 -> Adjust by +/- offset.
 
 ### How to Install and Run
 1.  **Open MT5:** Open MetaTrader 5.
